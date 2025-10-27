@@ -2,6 +2,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { pool } from './utils/db';
+
 import authRoutes from './routes/authRoutes';
 import chatRoutes from './routes/chatRoutes';
 import feedbackRoutes from './routes/feedbackRoutes';
@@ -26,6 +28,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/bus', busRoutes);
+
+app.get('/users', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, nome, email FROM users');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Erro ao buscar usuários' });
+  }
+});
 
 const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, '0.0.0.0', () =>

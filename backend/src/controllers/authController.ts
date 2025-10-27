@@ -19,7 +19,7 @@ export const register = async (req: Request, res: Response) => {
   }
 
   const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-  if (existing.rowCount > 0) {
+  if (existing?.rowCount && existing.rowCount > 0) {
     return res.status(409).json({ success: false, message: 'Email já cadastrado' });
   }
 

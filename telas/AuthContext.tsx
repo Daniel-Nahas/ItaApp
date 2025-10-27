@@ -25,8 +25,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   AsyncStorage.removeItem('token');
 };
 
-
-
   const login = async (newToken: string, id: number) => {
     setToken(newToken);
     setVisitante(false);

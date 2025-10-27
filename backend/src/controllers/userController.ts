@@ -5,6 +5,9 @@ import bcrypt from 'bcrypt';
 
 export const fetchUser = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
+  if (req.userId !== id) {
+  return res.status(403).json({ message: 'Acesso negado: usuário não autorizado' });
+}
   try {
     const user = await getUserById(id);
     if (!user) return res.status(404).json({ message: 'Usuário não encontrado' });
@@ -16,6 +19,9 @@ export const fetchUser = async (req: Request, res: Response) => {
 
 export const updateUserProfile = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
+  if (req.userId !== id) {
+  return res.status(403).json({ message: 'Acesso negado: usuário não autorizado' });
+}
   const { nome, email, cpf } = req.body;
   try {
     const updated = await updateUser(id, { nome, email, cpf });
@@ -27,6 +33,9 @@ export const updateUserProfile = async (req: Request, res: Response) => {
 
 export const updateUserPhoto = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
+  if (req.userId !== id) {
+  return res.status(403).json({ message: 'Acesso negado: usuário não autorizado' });
+}
   const { foto_url } = req.body;
   try {
     const updated = await updatePhoto(id, foto_url);
@@ -38,6 +47,9 @@ export const updateUserPhoto = async (req: Request, res: Response) => {
 
 export const updateUserPassword = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
+  if (req.userId !== id) {
+  return res.status(403).json({ message: 'Acesso negado: usuário não autorizado' });
+}
   const { senha } = req.body;
   try {
     const hash = await bcrypt.hash(senha, 10);

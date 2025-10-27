@@ -221,13 +221,23 @@ CREATE TABLE bus_routes (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Posição do ônibus
+CREATE TABLE bus_positions (
+  id SERIAL PRIMARY KEY,
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Chat
 CREATE TABLE chat_messages (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id),
+    route_id INT REFERENCES bus_routes(id),
     mensagem TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
 
 Clique em Run ▶️ para executar
 

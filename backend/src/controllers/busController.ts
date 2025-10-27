@@ -1,6 +1,7 @@
 //backend/src/controllers/busController.ts
 import { Request, Response } from 'express';
 import { createRoute, getAllRoutes } from '../models/busModel';
+import { pool } from '../utils/db';
 
 export const listRoutes = async (_req: Request, res: Response) => {
   try {
@@ -22,3 +23,13 @@ export const addRoute = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Erro ao criar rota' });
   }
 };
+
+export const getBusPositions = async (_req: Request, res: Response) => {
+  try {
+    const result = await pool.query('SELECT id, latitude, longitude FROM bus_positions');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Erro ao buscar posições dos ônibus' });
+  }
+};
+
