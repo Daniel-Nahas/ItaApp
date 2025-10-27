@@ -1,0 +1,35 @@
+{
+  "name": "busapp",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^14.0.0",
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-navigation/native": "^7.0.14",
+    "@react-navigation/native-stack": "^7.1.6",
+    "axios": "^1.9.0",
+    "expo": "^53.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "^19.1.0",
+    "react-native": "^0.80.0",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-maps": "1.20.1",
+    "react-native-paper": "^5.12.5",
+    "react-native-reanimated": "~3.17.4",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.0.0",
+    "typescript": "~5.3.3"
+  },
+  "private": true
+}
