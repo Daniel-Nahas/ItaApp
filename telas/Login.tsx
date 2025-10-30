@@ -29,7 +29,7 @@ export default function Login({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/logo.png')} style={styles.logo} />
+      <Image source={require('../assets/logo2.svg')} style={styles.logo} />
       
       <TextInput
         style={styles.input}

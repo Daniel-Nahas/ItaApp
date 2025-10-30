@@ -134,19 +134,18 @@ useEffect(() => {
 
             <Text style={styles.profileLabel}>CPF</Text>
             <Text style={styles.profileValue}>{cpf}</Text>
-          </View>
-          // Dentro do TelaPerfil.tsx, após os dados do usuário
-        <View style={styles.profileContainer}>
-          <Text style={styles.profileLabel}>Rotas favoritas</Text>
-          {favoritas.length === 0 ? (
-            <Text style={styles.profileText}>Você ainda não tem rotas favoritas.</Text>
-          ) : (
-            favoritas.map((r) => (
-              <Text key={r.id} style={styles.profileValue}>{r.nome}</Text>
-            ))
-          )}
-        </View>
 
+            <Text style={styles.profileLabel}>Rotas favoritas</Text>
+            {favoritas.length === 0 ? (
+              <Text style={styles.profileText}>Nenhuma rota favorita ainda.</Text>
+            ) : (
+              favoritas.map(r => (
+                <Text key={r.id} style={styles.profileValue}>
+                  {r.nome} ({r.total} buscas)
+                </Text>
+              ))
+            )}
+          </View>
         </>
       )}
 
