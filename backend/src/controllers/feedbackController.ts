@@ -1,9 +1,10 @@
 //backend/src/controllers/feedbackController.ts
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../utils/middleware';
 import { createFeedback } from '../models/feedbackModel';
 import { containsBadWords } from '../utils/profanityFilter';
 
-export const addFeedback = async (req: Request, res: Response) => {
+export const addFeedback = async (req: AuthRequest, res: Response) => {
   const { estrelas, comentario } = req.body;
   if (!estrelas) return res.status(400).json({ message: 'Avaliação é obrigatória' });
   if (comentario && containsBadWords(comentario)) return res.status(400).json({ message: 'Comentário contém palavras inadequadas' });

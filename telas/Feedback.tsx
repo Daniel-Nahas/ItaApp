@@ -1,11 +1,30 @@
 // telas/Feedback.tsx
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, TextInput, Alert } from 'react-native';
 import { useTheme } from './ThemeContext';
+import api from '../components/Api';
+import { useAuth } from './AuthContext';
 
 export default function Feedback({ navigation }: any) {
   const [stars, setStars] = useState(0);
+  const [comentario, setComentario] = useState('');
   const { styles } = useTheme();
+  const { token } = useAuth();
+
+  const enviarFeedback = async () => {
+    if (stars === 0) {
+      Alert.alert('Erro', 'Selecione uma quantidade de estrelas');
+      return;
+    }
+    try {
+      await api.post('/feedback', { estrelas: stars, comentario });
+      Alert.alert('Obrigado!', 'Seu feedback foi enviado com sucesso');
+      setStars(0);
+      setComentario('');
+    } catch (err) {
+      Alert.alert('Erro', 'Não foi possível enviar o feedback');
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -19,38 +38,37 @@ export default function Feedback({ navigation }: any) {
         ))}
       </View>
 
-      {/* Barra de navegação inferior */}
-        <View style={styles.bottomNav}>
-          
-          <TouchableOpacity style={styles.navItem}>
-            <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
-            <Image source={require('../assets/nav.png')} style={styles.navIcon} />
-          </TouchableOpacity>
+      <TextInput
+        style={styles.input}
+        placeholder="Escreva seu comentário..."
+        value={comentario}
+        onChangeText={setComentario}
+        multiline
+      />
 
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Chat')}>
-            <Image source={require('../assets/nav1.png')} style={styles.navIcon} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.replace('Feedback')}
-          >
+      <TouchableOpacity style={styles.btn} onPress={enviarFeedback}>
+        <Text style={styles.btnTxt}>Enviar Feedback</Text>
+      </TouchableOpacity>
+
+      {/* Barra de navegação inferior */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
+          <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
+          <Image source={require('../assets/nav.png')} style={styles.navIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Chat')}>
+          <Image source={require('../assets/nav1.png')} style={styles.navIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Feedback')}>
           <Text style={styles.btnTxtMap}>F</Text>
           <View style={styles.activeIndicator} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.replace('Login')}
-          >
-          <Text style={styles.btnTxtMap}>Sair da Conta</Text>
-          </TouchableOpacity>
-
-        </View>
-        
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItemSair} onPress={() => navigation.replace('Login')}>
+          <Text style={styles.btnTxtMap}>Sair</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

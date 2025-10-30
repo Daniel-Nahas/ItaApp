@@ -1,5 +1,5 @@
 // telas/AuthContext.tsx (serve para o sistema saber saber durante a navegação se o usuário está logado ou não)
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthContextType = {
@@ -38,6 +38,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserId(null);
     await AsyncStorage.removeItem('token');
   };
+
+  useEffect(() => {
+  const loadToken = async () => {
+    const storedToken = await AsyncStorage.getItem('token');
+    if (storedToken) {
+      setToken(storedToken);
+      setVisitante(false);
+      // opcional: carregar userId do AsyncStorage ou via /auth/profile
+    }
+  };
+  loadToken();
+  }, []);
+
 
   return (
     <AuthContext.Provider value={{ token, visitante, userId, loginComoVisitante, login, logout }}>

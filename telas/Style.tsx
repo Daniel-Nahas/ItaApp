@@ -182,6 +182,12 @@ export const appStyles = StyleSheet.create({
   navItem: {
     alignItems: 'center',
   },
+  navItemSair: {
+    backgroundColor:'#ff0000ff',
+    borderRadius: 9,
+    padding: 9,
+    alignItems: 'center',
+  },
   navIcon: {
     width: 24,
     height: 24,
@@ -192,5 +198,36 @@ export const appStyles = StyleSheet.create({
     height: 3,
     backgroundColor: '#004d40',
     borderRadius: 1.5,
+  },
+  profileContainer: {
+  width: '100%',
+  backgroundColor: '#ffffffff',
+  borderRadius: 20,
+  padding: 20,
+  marginBottom: 170,
+  marginTop: 20,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.05,
+  shadowRadius: 4,
+  elevation: 2,
+  },
+  profileText: {
+    fontSize: 18,
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'left',
+    width: '100%',
+    fontWeight: '500',
+  },
+  profileLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  profileValue: {
+    fontSize: 18,
+    color: '#222',
+    marginBottom: 16,
   },
 });

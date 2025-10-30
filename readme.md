@@ -29,35 +29,7 @@ cmd
 cd backend
 npm install
 
-2. Configure o banco de dados
-Crie um banco PostgreSQL com as tabelas necessárias. Exemplo:
-
-sql
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  nome VARCHAR(100),
-  email VARCHAR(100) UNIQUE,
-  senha_hash VARCHAR(255),
-  cpf VARCHAR(14),
-  foto_url VARCHAR(255)
-);
-
-CREATE TABLE chat_messages (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id),
-  mensagem TEXT,
-  data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE feedbacks (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id),
-  estrelas INTEGER,
-  comentario TEXT,
-  data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-3. Configure a conexão com o banco
+2. Configure a conexão com o banco
 No arquivo src/db.ts ou equivalente:
 
 import { Pool } from 'pg';
@@ -70,7 +42,7 @@ export const pool = new Pool({
   port: 5432,
 });
 
-4. Inicie o servidor
+3. Inicie o servidor
 
 cmd
 npx tsx src/index.ts
@@ -221,7 +193,15 @@ CREATE TABLE bus_routes (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Posição do ônibus
+-- Chat
+CREATE TABLE chat_messages (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    mensagem TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+--Posição do ônibus
 CREATE TABLE bus_positions (
   id SERIAL PRIMARY KEY,
   latitude DOUBLE PRECISION NOT NULL,
@@ -229,15 +209,43 @@ CREATE TABLE bus_positions (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Chat
-CREATE TABLE chat_messages (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    route_id INT REFERENCES bus_routes(id),
-    mensagem TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+-- Rotas pesquisadas pelo user
+CREATE TABLE user_route_searches (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  route_id INT REFERENCES bus_routes(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+--Rotas favoritas do user
+CREATE TABLE user_favorite_routes (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  route_id INT REFERENCES bus_routes(id),
+  UNIQUE (user_id, route_id)
 );
 
+SELECT * FROM users;
+
+-- Rota 1
+INSERT INTO bus_routes (nome, tipo, pontos) VALUES
+('Guapura - Rodoviária', 'ida', '[{"lat":-24.1961,"lng":-46.7750},{"lat":-24.1970,"lng":-46.7745},{"lat":-24.1980,"lng":-46.7740},{"lat":-24.1990,"lng":-46.7735},{"lat":-24.2000,"lng":-46.7730},{"lat":-24.2010,"lng":-46.7725},{"lat":-24.2020,"lng":-46.7720},{"lat":-24.2030,"lng":-46.7715},{"lat":-24.2040,"lng":-46.7710},{"lat":-24.2050,"lng":-46.7705}]');
+
+INSERT INTO bus_routes (nome, tipo, pontos) VALUES
+('Rodoviária - Guapura', 'volta', '[{"lat":-24.2050,"lng":-46.7705},{"lat":-24.2040,"lng":-46.7710},{"lat":-24.2030,"lng":-46.7715},{"lat":-24.2020,"lng":-46.7720},{"lat":-24.2010,"lng":-46.7725},{"lat":-24.2000,"lng":-46.7730},{"lat":-24.1990,"lng":-46.7735},{"lat":-24.1980,"lng":-46.7740},{"lat":-24.1970,"lng":-46.7745},{"lat":-24.1961,"lng":-46.7750}]');
+
+-- Rota 2
+INSERT INTO bus_routes (nome, tipo, pontos) VALUES
+('Gaivotas - Centro', 'ida', '[{"lat":-24.1900,"lng":-46.7755},{"lat":-24.1910,"lng":-46.7750},{"lat":-24.1920,"lng":-46.7745},{"lat":-24.1930,"lng":-46.7740},{"lat":-24.1940,"lng":-46.7735},{"lat":-24.1950,"lng":-46.7730},{"lat":-24.1960,"lng":-46.7725},{"lat":-24.1970,"lng":-46.7720},{"lat":-24.1980,"lng":-46.7715},{"lat":-24.1990,"lng":-46.7710}]');
+
+INSERT INTO bus_routes (nome, tipo, pontos) VALUES
+('Centro - Gaivotas', 'volta', '[{"lat":-24.1990,"lng":-46.7710},{"lat":-24.1980,"lng":-46.7715},{"lat":-24.1970,"lng":-46.7720},{"lat":-24.1960,"lng":-46.7725},{"lat":-24.1950,"lng":-46.7730},{"lat":-24.1940,"lng":-46.7735},{"lat":-24.1930,"lng":-46.7740},{"lat":-24.1920,"lng":-46.7745},{"lat":-24.1910,"lng":-46.7750},{"lat":-24.1900,"lng":-46.7755}]');
+
+-- Rota 3
+INSERT INTO bus_routes (nome, tipo, pontos) VALUES
+('Loty - Centro', 'ida', '[{"lat":-24.1850,"lng":-46.7800},{"lat":-24.1860,"lng":-46.7795},{"lat":-24.1870,"lng":-46.7790},{"lat":-24.1880,"lng":-46.7785},{"lat":-24.1890,"lng":-46.7780},{"lat":-24.1900,"lng":-46.7775},{"lat":-24.1910,"lng":-46.7770},{"lat":-24.1920,"lng":-46.7765},{"lat":-24.1930,"lng":-46.7760},{"lat":-24.1940,"lng":-46.7755}]');
+
+INSERT INTO bus_routes (nome, tipo, pontos) VALUES
+('Centro - Loty', 'volta', '[{"lat":-24.1940,"lng":-46.7755},{"lat":-24.1930,"lng":-46.7760},{"lat":-24.1920,"lng":-46.7765},{"lat":-24.1910,"lng":-46.7770},{"lat":-24.1900,"lng":-46.7775},{"lat":-24.1890,"lng":-46.7780},{"lat":-24.1880,"lng":-46.7785},{"lat":-24.1870,"lng":-46.7790},{"lat":-24.1860,"lng":-46.7795},{"lat":-24.1850,"lng":-46.7800}]');
 
 Clique em Run ▶️ para executar
 
@@ -260,7 +268,7 @@ Substitua "SUA_SENHA" pela senha que você definiu na instalação
 No terminal:
 
 cmd
-npx tsx src/index.ts
+npx tsx src/server.ts
 Você deve ver:
 
 Código

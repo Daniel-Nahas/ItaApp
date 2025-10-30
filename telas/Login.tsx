@@ -10,16 +10,16 @@ export default function Login({ navigation }: any) {
   const { login, loginComoVisitante } = useAuth();
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [senha, setSenha] = useState('');
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+    if (!email.trim() || !senha.trim()) {
       Alert.alert('Erro', 'Preencha todos os campos');
       return;
     }
 
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, senha });
       login(response.data.token, response.data.user.id);
       navigation.replace('Map');
     } catch (err: any) {
@@ -45,8 +45,8 @@ export default function Login({ navigation }: any) {
         placeholder="Senha"
         placeholderTextColor={isAccessible ? '#ccc' : '#666'}
         secureTextEntry
-        value={password}
-        onChangeText={setPassword}
+        value={senha}
+        onChangeText={setSenha}
       />
 
       <TouchableOpacity style={styles.btn} onPress={toggleTheme}>

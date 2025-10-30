@@ -1,9 +1,10 @@
 //backend/src/controllers/chatController.ts
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../utils/middleware';
 import { createMessage, getMessagesByRoute } from '../models/chatModel';
 import { containsBadWords } from '../utils/profanityFilter';
 
-export const sendMessage = async (req: Request, res: Response) => {
+export const sendMessage = async (req: AuthRequest, res: Response) => {
   const { mensagem, route_id } = req.body;
   if (!mensagem || !route_id) return res.status(400).json({ message: 'Mensagem e rota obrigatórias' });
   if (containsBadWords(mensagem)) return res.status(400).json({ message: 'Mensagem contém palavras inadequadas' });
@@ -16,7 +17,7 @@ export const sendMessage = async (req: Request, res: Response) => {
   }
 };
 
-export const getMessages = async (req: Request, res: Response) => {
+export const getMessages = async (req: AuthRequest, res: Response) => {
   const routeId = Number(req.params.routeId);
   try {
     const messages = await getMessagesByRoute(routeId);

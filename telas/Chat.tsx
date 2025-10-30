@@ -3,9 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, Image } from 'react-native';
 import { useTheme } from './ThemeContext';
 import { useAuth } from './AuthContext';
-import io from 'socket.io-client';
+import io, { Socket } from 'socket.io-client';
 import api from '../components/Api';
 
+// Lista simples de palavras proibidas
 const Palavroes = [
   "merda", "bosta", "porra", "caralho", "puta", "otario",
   "otaria", "fdp", "vagabundo", "vagabunda", "arrombado",
@@ -13,29 +14,53 @@ const Palavroes = [
   "motherfucker", "mierda", "gilipollas"
 ];
 
-const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-const containsPalavroes = (text: string) => Palavroes.some(word => normalize(text).includes(word));
+const normalize = (text: string) =>
+  text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const containsPalavroes = (text: string) =>
+  Palavroes.some(word => normalize(text).includes(word));
+
+interface Message {
+  user: string;
+  text: string;
+}
 
 export default function Chat({ navigation }: any) {
   const { styles } = useTheme();
   const { token } = useAuth();
-  const [messages, setMessages] = useState<{user: string, text: string}[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [socket, setSocket] = useState<any>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [user, setUser] = useState<string>('Usuário'); // Adiciona nome padrão
 
   useEffect(() => {
-    const s = io('http://192.168.0.100:3000', { query: { token } });
+    // Carregar nome do usuário logado
+    const fetchUser = async () => {
+      try {
+        const res = await api.get('/auth/profile');
+        if (res.data?.nome) setUser(res.data.nome);
+      } catch {
+        setUser('Anônimo');
+      }
+    };
+    fetchUser();
+
+    const s = io('http://192.168.100.115:3000', { query: { token } });// IPv4 da maquina como do backend !!
     setSocket(s);
 
-    s.on('chatMessage', (msg: {user: string, text: string}) => {
+    // Mensagens recebidas
+    s.on('receive_message', (msg: Message) => {
       setMessages(prev => [...prev, msg]);
     });
 
-    return () => { s.disconnect(); };
+    return () => {
+      s.disconnect();
+    };
   }, [token]);
 
   const sendMessage = () => {
     if (!input.trim()) return;
+
     if (containsPalavroes(input)) {
       Alert.alert(
         "Mensagem bloqueada",
@@ -44,28 +69,33 @@ export default function Chat({ navigation }: any) {
       setInput('');
       return;
     }
-    socket.on('chatMessage', (msg: { user: string; text: string }) => {
-  setMessages(prev => [...prev, msg]);
-});
 
-socket.emit('chatMessage', { text: input });
-
-    setInput('');
+    if (socket) {
+      const message: Message = { user, text: input };
+      socket.emit('send_message', message);
+      setInput('');
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Chat</Text>
+
       <FlatList
         data={messages}
         keyExtractor={(_, index) => index.toString()}
-        renderItem={({ item }) => <Text style={{ marginVertical: 4 }}>{item.user}: {item.text}</Text>}
+        renderItem={({ item }) => (
+          <Text style={{ marginVertical: 4 }}>
+            <Text style={{ fontWeight: 'bold' }}>{item.user}:</Text> {item.text}
+          </Text>
+        )}
         style={{ flex: 1, width: '100%', marginVertical: 10 }}
       />
+
       <View style={styles.inputContainerChat}>
         <TextInput
           style={styles.inputChat}
-          placeholder="Digite sua mensagem"
+          placeholder="Digite sua mensagem..."
           value={input}
           onChangeText={setInput}
         />
@@ -73,6 +103,26 @@ socket.emit('chatMessage', { text: input });
           <Text style={styles.btnTxt}>Enviar</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
+          <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
+          <Image source={require('../assets/nav.png')} style={styles.navIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Image source={require('../assets/nav1.png')} style={styles.navIcon} />
+          <View style={styles.activeIndicator} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Feedback')}>
+          <Text style={styles.btnTxtMap}>F</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItemSair} onPress={() => navigation.replace('Login')}>
+          <Text style={styles.btnTxtMap}>Sair</Text>
+        </TouchableOpacity>
+      </View>
+
     </View>
   );
 }
