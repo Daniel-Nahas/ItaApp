@@ -2,27 +2,24 @@
 
 Guia de Instalação e Teste Local do Projeto
 Este projeto é composto por:
-
 Backend Node.js com PostgreSQL
-
 App mobile em React Native com Expo
 
  **Requisitos**
+
 Node.js (v18+)
-
 PostgreSQL instalado e rodando
-
 Expo CLI (npm install -g expo-cli)
-
 pgAdmin (opcional, para visualizar o banco)
-
 Editor de código (VS Code recomendado)
 
  **Estrutura do Projeto**
+
 Código
 /backend         → API Node.js + PostgreSQL
 /app             → App React Native com Expo
  Configuração do Backend
+
 1. Instale as dependências
 
 cmd
@@ -30,22 +27,23 @@ cd backend
 npm install
 
 2. Configure a conexão com o banco
+
 No arquivo src/db.ts ou equivalente:
 
-import { Pool } from 'pg';
+  import { Pool } from 'pg';
 
-export const pool = new Pool({
-  user: 'seu_usuario',
-  host: 'localhost',
-  database: 'nome_do_banco',
-  password: 'sua_senha',
-  port: 5432,
-});
+  export const pool = new Pool({
+    user: 'seu_usuario',
+    host: 'localhost',
+    database: 'nome_do_banco',
+    password: 'sua_senha',
+    port: 5432,
+  });
 
 3. Inicie o servidor
 
 cmd
-npx tsx src/index.ts
+npx tsx watch src/server.ts // Reinicia o servidor quando atualiza o código
 
 Certifique-se de que o backend está escutando em 0.0.0.0:
 
@@ -54,6 +52,7 @@ app.listen(PORT, '0.0.0.0', () =>
 );
 
  **Configuração do App React Native**
+ 
 1. Instale as dependências
 
 cmd
@@ -77,7 +76,7 @@ export default api;
 
 cmd
 cd backend
-npx tsx src/index.ts
+npx tsx watch src/server.ts // Reinicia o servidor quando atualiza alguma coisa no código 
 
 2. Inicie o app com Expo
 
@@ -89,25 +88,23 @@ npx expo start
 **Certifique-se de que o celular está na mesma rede Wi-Fi que o computador**
 
  **Funcionalidades para Testar**
+
 Cadastro de usuário
 
 **Login**
 
 Tela de perfil (editar nome, email, CPF)
-
 Chat (envio de mensagens)
-
 Feedback (estrelas + comentário)
-
-Mapa (se implementado)
+Mapa
 
  **Verificação no Banco**
-Use o pgAdmin ou terminal para verificar os dados:
 
-sql
-SELECT * FROM users;
-SELECT * FROM chat_messages;
-SELECT * FROM feedbacks;
+Use o pgAdmin ou terminal para verificar os dados:
+  sql
+    SELECT * FROM users;
+    SELECT * FROM chat_messages;
+    SELECT * FROM feedbacks;
 
  **Alternativa com ngrok (se rede local falhar)**
 
@@ -122,45 +119,39 @@ Use o link gerado (https://abc123.ngrok.io) no Api.ts como baseURL.
  **Tutorial: Como usar PostgreSQL com pgAdmin (passo a passo)**
  
  1. Instalar PostgreSQL + pgAdmin
-🔧 Windows
+
+Windows
 Acesse https://www.postgresql.org/download/windows
-
 Baixe o instalador oficial
-
 Durante a instalação:
-
-Escolha uma senha segura para o usuário postgres (guarde essa senha!)
-
-Instale também o pgAdmin (vem junto)
-
-Deixe a porta padrão: 5432
+  Escolha uma senha segura para o usuário postgres (guarde essa senha!)
+  Instale também o pgAdmin
+  Deixe a porta padrão: 5432
 
  2. Abrir o pgAdmin pela primeira vez
+
 Abra o pgAdmin 4
-
 Ele pedirá a senha do usuário postgres (aquela que você definiu)
-
 Após login, você verá o painel com:
-
 Servers → PostgreSQL 15 (ou versão instalada)
 
  3. Criar o banco de dados
+
 Clique com o botão direito em Databases
-
 Escolha Create → Database
-
 Nomeie como: app_mobile
-
 Clique em Save
 
  4. Criar as tabelas
+
 Expanda app_mobile → Schemas → public → Tables
-
 Clique com o botão direito em Tables → Query Tool
-
 Cole o script SQL abaixo:
 
 sql
+-- Criar tipo ENUM para rotas
+CREATE TYPE tipo_rota AS ENUM ('ida', 'volta');
+
 -- Criar tipo ENUM para rotas
 CREATE TYPE tipo_rota AS ENUM ('ida', 'volta');
 
@@ -201,7 +192,9 @@ CREATE TABLE chat_messages (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
---Posição do ônibus
+ALTER TABLE chat_messages
+ADD COLUMN route_id INT REFERENCES bus_routes(id);
+
 CREATE TABLE bus_positions (
   id SERIAL PRIMARY KEY,
   latitude DOUBLE PRECISION NOT NULL,
@@ -209,20 +202,32 @@ CREATE TABLE bus_positions (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Rotas pesquisadas pelo user
 CREATE TABLE user_route_searches (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id),
   route_id INT REFERENCES bus_routes(id),
   created_at TIMESTAMP DEFAULT NOW()
 );
---Rotas favoritas do user
+
 CREATE TABLE user_favorite_routes (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id),
   route_id INT REFERENCES bus_routes(id),
   UNIQUE (user_id, route_id)
 );
+
+-- Cria tabela para tokens de redefinição
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  token VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Índice para buscar por token rapidamente
+CREATE INDEX IF NOT EXISTS idx_password_reset_token ON password_reset_tokens(token);
 
 SELECT * FROM users;
 
@@ -247,44 +252,52 @@ INSERT INTO bus_routes (nome, tipo, pontos) VALUES
 INSERT INTO bus_routes (nome, tipo, pontos) VALUES
 ('Centro - Loty', 'volta', '[{"lat":-24.1940,"lng":-46.7755},{"lat":-24.1930,"lng":-46.7760},{"lat":-24.1920,"lng":-46.7765},{"lat":-24.1910,"lng":-46.7770},{"lat":-24.1900,"lng":-46.7775},{"lat":-24.1890,"lng":-46.7780},{"lat":-24.1880,"lng":-46.7785},{"lat":-24.1870,"lng":-46.7790},{"lat":-24.1860,"lng":-46.7795},{"lat":-24.1850,"lng":-46.7800}]');
 
+INSERT INTO bus_positions (latitude, longitude) VALUES
+(-24.1970, -46.7745),
+(-24.1910, -46.7750),
+(-24.1860, -46.7795);
+
+SELECT id, nome, tipo, jsonb_array_length(pontos) AS qtd_pontos
+FROM bus_routes;
+
+SELECT * FROM bus_positions;
+
 Clique em Run ▶️ para executar
 
  5. Configurar acesso no backend
 No seu projeto Node.js, configure o arquivo db.ts ou equivalente:
 
+  import { Pool } from 'pg';
 
-import { Pool } from 'pg';
-
-export const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'app_mobile',
-  password: 'SUA_SENHA',
-  port: 5432,
-});
+  export const pool = new Pool({
+    user: 'postgres',
+    host: 'localhost',
+    database: 'app_mobile',
+    password: 'SUA_SENHA',
+    port: 5432,
+  });
 Substitua "SUA_SENHA" pela senha que você definiu na instalação
 
  6. Testar conexão
+
 No terminal:
 
 cmd
-npx tsx src/server.ts
-Você deve ver:
+  npx tsx watch src/server.ts
 
-Código
- Servidor rodando na porta 3000
- Conectado ao PostgreSQL
+Você deve ver:
+  Código
+    Servidor rodando na porta 3000
+    Conectado ao PostgreSQL
 
  7. Visualizar dados no pgAdmin
+
 Vá em Tables → users → View/Edit Data → All Rows
-
 Você verá os usuários cadastrados
-
 Faça o mesmo com chat_messages e feedbacks
 
  8. Dicas úteis
+
 Para apagar tudo: DROP DATABASE app_mobile;
-
 Para limpar uma tabela: TRUNCATE TABLE users RESTART IDENTITY CASCADE;
-
 Para testar manualmente: use o botão de Query Tool para rodar comandos SQL

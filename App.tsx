@@ -10,6 +10,8 @@ import Map from './telas/Map';
 import Chat from './telas/Chat';
 import Feedback from './telas/Feedback';
 import TelaPerfil from './telas/TelaPerfil';
+import Opcoes from './telas/Opcoes';
+import AlterarSenha from './telas/AlterarSenha';
 
 import { AuthProvider } from './telas/AuthContext';
 import { ThemeProvider } from './telas/ThemeContext';
@@ -29,6 +31,8 @@ export default function App() {
             <Stack.Screen name="Chat" component={Chat} />
             <Stack.Screen name="Feedback" component={Feedback} />
             <Stack.Screen name="Perfil" component={TelaPerfil} />
+            <Stack.Screen name="Opcoes" component={Opcoes} />
+            <Stack.Screen name="AlterarSenha" component={AlterarSenha} />
           </Stack.Navigator>
         </NavigationContainer>
       </ThemeProvider>

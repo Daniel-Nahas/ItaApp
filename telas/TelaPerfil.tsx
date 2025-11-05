@@ -14,7 +14,6 @@ export default function TelaPerfil({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [cpf, setCpf] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
-  const [senha, setSenha] = useState('');
   const [editando, setEditando] = useState(false);
 
   useEffect(() => {
@@ -34,13 +33,10 @@ export default function TelaPerfil({ navigation }: any) {
 
   const salvarAlteracoes = async () => {
     try {
-      await api.put(`/users/${userId}`, { nome, email, cpf });
-      if (senha) {
-        await api.put(`/users/${userId}/password`, { senha });
-      }
+      // Somente nome e email são atualizáveis aqui
+      await api.put(`/users/${userId}`, { nome, email });
       Alert.alert('Sucesso', 'Perfil atualizado com sucesso');
       setEditando(false);
-      setSenha('');
     } catch {
       Alert.alert('Erro', 'Falha ao atualizar perfil');
     }
@@ -74,17 +70,17 @@ export default function TelaPerfil({ navigation }: any) {
 
   const [favoritas, setFavoritas] = useState<any[]>([]);
 
-useEffect(() => {
-  const fetchFavorites = async () => {
-    try {
-      const res = await api.get(`/users/${userId}/favorites`);
-      setFavoritas(res.data);
-    } catch {
-      console.log('Erro ao carregar favoritas');
-    }
-  };
-  fetchFavorites();
-}, [userId]);
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        const res = await api.get(`/users/${userId}/favorites`);
+        setFavoritas(res.data);
+      } catch {
+        console.log('Erro ao carregar favoritas');
+      }
+    };
+    fetchFavorites();
+  }, [userId]);
 
   return (
     <ScrollView contentContainerStyle={[styles.container, { alignItems: 'center', padding: 20 }]}>
@@ -103,14 +99,6 @@ useEffect(() => {
 
           <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Nome" />
           <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" />
-          <TextInput style={styles.input} value={cpf} onChangeText={setCpf} placeholder="CPF" />
-          <TextInput
-            style={styles.input}
-            value={senha}
-            onChangeText={setSenha}
-            placeholder="Nova Senha"
-            secureTextEntry
-          />
 
           <TouchableOpacity style={styles.btn} onPress={salvarAlteracoes}>
             <Text style={styles.btnTxt}>Salvar Alterações</Text>
@@ -125,6 +113,7 @@ useEffect(() => {
           <TouchableOpacity style={styles.btn} onPress={() => setEditando(true)}>
             <Text style={styles.btnTxt}>Editar Perfil</Text>
           </TouchableOpacity>
+
           <View style={styles.profileContainer}>
             <Text style={styles.profileLabel}>Nome</Text>
             <Text style={styles.profileValue}>{nome}</Text>
@@ -161,11 +150,8 @@ useEffect(() => {
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Chat')}>
           <Image source={require('../assets/nav1.png')} style={styles.navIcon} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Feedback')}>
-          <Text style={styles.btnTxtMap}>F</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItemSair} onPress={sair}>
-          <Text style={styles.btnTxtMap}>Sair</Text>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Opcoes')}>
+          <Text style={styles.btnTxtMap}>O</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

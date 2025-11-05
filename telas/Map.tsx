@@ -208,11 +208,8 @@ export default function Map({ navigation }: any) {
           <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Chat')}>
             <Image source={require('../assets/nav1.png')} style={styles.navIcon} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Feedback')}>
-            <Text style={styles.btnTxtMap}>F</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItemSair} onPress={() => navigation.replace('Login')}>
-            <Text style={styles.btnTxtMap}>Sair</Text>
+          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Opcoes')}>
+            <Text style={styles.btnTxtMap}>O</Text>
           </TouchableOpacity>
         </View>
       )}

@@ -1,22 +1,30 @@
 // telas/EsqueciSenha.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useTheme } from './ThemeContext';
+import api from '../components/Api';
 
 export default function EsqueciSenha({ navigation }: any) {
   const { styles, isAccessible } = useTheme();
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const enviarRecuperacao = () => {
+  const enviarRecuperacao = async () => {
     if (!email) {
       Alert.alert('Erro', 'Por favor, insira seu email.');
       return;
     }
-    Alert.alert(
-      'Recuperação enviada',
-      `Um link de redefinição foi enviado para: ${email}`
-    );
-    navigation.replace('Login');
+    setLoading(true);
+    try {
+      await api.post('/auth/forgot', { email });
+      Alert.alert('Verifique seu email', 'Se o email estiver cadastrado, você receberá instruções para redefinir a senha.');
+      navigation.replace('Login');
+    } catch (err) {
+      console.error('Erro forgot:', err);
+      Alert.alert('Erro', 'Não foi possível processar a solicitação no momento');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,10 +38,11 @@ export default function EsqueciSenha({ navigation }: any) {
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
+        autoCapitalize="none"
       />
 
-      <TouchableOpacity style={styles.btn} onPress={enviarRecuperacao}>
-        <Text style={styles.btnTxt}>Enviar para email</Text>
+      <TouchableOpacity style={styles.btn} onPress={enviarRecuperacao} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnTxt}>Enviar para email</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity

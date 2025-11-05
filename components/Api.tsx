@@ -9,7 +9,7 @@ const api = axios.create({
 });
 
 // Interceptor para enviar token automaticamente
-api.interceptors.request.use(async (config) => {
+api.interceptors.request.use(async config => {
   const token = await AsyncStorage.getItem('token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
