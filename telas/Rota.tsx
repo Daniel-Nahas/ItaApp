@@ -1,4 +1,3 @@
-// telas/Map.tsx
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
@@ -16,6 +15,7 @@ import { useTheme } from './ThemeContext';
 import api from '../components/Api';
 import { useAuth } from './AuthContext';
 import * as Location from 'expo-location';
+import Chat from './Chat'; // Chat atualizado (aceita routeId via navigation params)
 import { StackActions } from '@react-navigation/native';
 
 type RouteItem = {
@@ -25,9 +25,13 @@ type RouteItem = {
   tipo?: string;
 };
 
-export default function Map({ navigation }: any) {
+export default function Rota({ navigation, route }: any) {
   const { styles } = useTheme();
   const { visitante, userId } = useAuth();
+  const params: any = route?.params || {};
+
+  const selectedRouteIdParam = params?.routeId ?? null;
+  const selectedRouteNameParam = params?.routeName ?? '';
 
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [busPositions, setBusPositions] = useState<{ id: number; latitude: number; longitude: number }[]>([]);
@@ -53,7 +57,6 @@ export default function Map({ navigation }: any) {
         return;
       }
       try {
-        console.log('📡 Solicitando permissão de localização...');
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Permissão Negada', 'Não foi possível acessar a localização.');
@@ -61,7 +64,6 @@ export default function Map({ navigation }: any) {
           return;
         }
         const location = await Location.getCurrentPositionAsync({});
-        console.log('Localização obtida:', location.coords);
         setUserLocation({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
@@ -76,19 +78,10 @@ export default function Map({ navigation }: any) {
 
   const fetchData = async () => {
     try {
-      console.log('Buscando rotas e posições...');
       const [resRoutes, resBuses] = await Promise.all([
-        api.get('/bus').catch(err => {
-          console.log('Erro rotas:', err?.message ?? err);
-          return { data: [] };
-        }),
-        api.get('/bus/positions').catch(err => {
-          console.log('Erro posições:', err?.message ?? err);
-          return { data: [] };
-        }),
+        api.get('/bus').catch(() => ({ data: [] })),
+        api.get('/bus/positions').catch(() => ({ data: [] })),
       ]);
-      console.log('Rotas recebidas:', (resRoutes.data || []).length);
-      console.log('Posições recebidas:', (resBuses.data || []).length);
       setRoutes(resRoutes.data || []);
       setBusPositions(resBuses.data || []);
     } catch (err) {
@@ -101,7 +94,7 @@ export default function Map({ navigation }: any) {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000); // 10s
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -119,7 +112,6 @@ export default function Map({ navigation }: any) {
     }
   };
 
-  // Loading
   if (loading || !userLocation) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }]}>
@@ -137,9 +129,57 @@ export default function Map({ navigation }: any) {
     );
   }
 
+  // Se veio param routeId: exibir apenas a rota selecionada e o chat dela
+  if (selectedRouteIdParam) {
+    const selectedRoute = routes.find(r => Number(r.id) === Number(selectedRouteIdParam));
+    const pontos = (selectedRoute?.pontos as any) || [];
+    const coords = Array.isArray(pontos) ? pontos.map((p: any) => ({ latitude: Number(p.lat), longitude: Number(p.lng) })) : [];
+
+    return (
+      <View style={styles.container}>
+        <Text style={[styles.title, { marginTop: 12 }]}>{selectedRoute?.nome ?? selectedRouteNameParam}</Text>
+
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={{ flex: 1, width: '100%' }}
+          initialRegion={{
+            latitude: userLocation?.latitude ?? -24.19,
+            longitude: userLocation?.longitude ?? -46.78,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          }}
+          showsUserLocation={!visitante}
+        >
+          {busPositions.map(bus => bus.latitude && bus.longitude && (
+            <Marker key={bus.id} coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }} title={`Ônibus ${bus.id}`} pinColor="blue" />
+          ))}
+
+          {coords.length >= 2 && <Polyline coordinates={coords} strokeColor={'green'} strokeWidth={4} />}
+        </MapView>
+
+        <View style={{ height: 360, width: '100%' }}>
+          <Chat />
+        </View>
+
+        <View style={styles.bottomNav}>
+          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
+            <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
+            <View style={styles.activeIndicator} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
+            <Image source={require('../assets/nav.png')} style={styles.navIcon} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Opcoes')}>
+            <Text style={styles.btnTxtMap}>O</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Caso padrão: mapa geral + busca + listagem
   return (
     <View style={styles.container}>
-      {/* Barra de pesquisa */}
       <View
         style={{
           position: 'absolute',
@@ -184,7 +224,7 @@ export default function Map({ navigation }: any) {
                 style={{ paddingVertical: 8 }}
                 onPress={() => {
                   registrarBusca(r.id!);
-                  // navega para a tela de rota passando params
+                  // navega para a mesma tela passando params; aqui uso dispatch para compatibilidade
                   navigation.dispatch(StackActions.replace('Rota', { routeId: r.id, routeName: r.nome }));
                 }}
               >
@@ -195,7 +235,6 @@ export default function Map({ navigation }: any) {
         </ScrollView>
       )}
 
-      {/* Mapa */}
       <MapView
         provider={PROVIDER_GOOGLE}
         style={{ flex: 1, width: '100%' }}
@@ -207,11 +246,9 @@ export default function Map({ navigation }: any) {
         }}
         showsUserLocation={!visitante}
       >
-        {busPositions.map(bus =>
-          bus.latitude && bus.longitude ? (
-            <Marker key={bus.id} coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }} title={`Ônibus ${bus.id}`} pinColor="blue" />
-          ) : null
-        )}
+        {busPositions.map(bus => bus.latitude && bus.longitude && (
+          <Marker key={bus.id} coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }} title={`Ônibus ${bus.id}`} pinColor="blue" />
+        ))}
 
         {filteredRoutes.map((r, index) => {
           const pontos = (r.pontos as any) || [];
@@ -221,7 +258,6 @@ export default function Map({ navigation }: any) {
         })}
       </MapView>
 
-      {/* Barra de navegação inferior */}
       {visitante ? (
         <View style={styles.bottomNav}>
           <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Login')}>
@@ -232,7 +268,6 @@ export default function Map({ navigation }: any) {
         <View style={styles.bottomNav}>
           <TouchableOpacity style={styles.navItem}>
             <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
-            <View style={styles.activeIndicator} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
             <Image source={require('../assets/nav.png')} style={styles.navIcon} />

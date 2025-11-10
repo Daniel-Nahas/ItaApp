@@ -147,9 +147,6 @@ export default function TelaPerfil({ navigation }: any) {
           <Image source={require('../assets/nav.png')} style={styles.navIcon} />
           <View style={styles.activeIndicator} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Chat')}>
-          <Image source={require('../assets/nav1.png')} style={styles.navIcon} />
-        </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Opcoes')}>
           <Text style={styles.btnTxtMap}>O</Text>
         </TouchableOpacity>

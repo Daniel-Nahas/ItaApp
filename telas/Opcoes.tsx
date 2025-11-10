@@ -40,9 +40,6 @@ export default function Opcoes({ navigation }: any) {
             <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
                 <Image source={require('../assets/nav.png')} style={styles.navIcon} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Chat')}>
-                <Image source={require('../assets/nav1.png')} style={styles.navIcon} />
-            </TouchableOpacity>
             <TouchableOpacity style={styles.navItem} >
                 <Text style={styles.btnTxtMap}>O</Text>
                 <View style={styles.activeIndicator} />
