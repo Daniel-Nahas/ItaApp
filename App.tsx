@@ -13,6 +13,7 @@ import TelaPerfil from './telas/TelaPerfil';
 import Opcoes from './telas/Opcoes';
 import AlterarSenha from './telas/AlterarSenha';
 import Rota from './telas/Rota';
+import AlterarEmail from './telas/AlterarEmail';
 
 import { AuthProvider } from './telas/AuthContext';
 import { ThemeProvider } from './telas/ThemeContext';
@@ -35,6 +36,7 @@ export default function App() {
             <Stack.Screen name="Opcoes" component={Opcoes} />
             <Stack.Screen name="AlterarSenha" component={AlterarSenha} />
             <Stack.Screen name="Rota" component={Rota} />
+            <Stack.Screen name="AlterarEmail" component={AlterarEmail} />
           </Stack.Navigator>
         </NavigationContainer>
       </ThemeProvider>

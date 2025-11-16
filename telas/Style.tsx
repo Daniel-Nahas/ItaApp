@@ -107,6 +107,15 @@ export const appStyles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 30,
   },
+  btnVisitante: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#05b788ff',
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   backButton:{
     width: '100%',
     height: 50,
@@ -120,6 +129,10 @@ export const appStyles = StyleSheet.create({
     fontSize: 18,
   },
   btnTxtMap: {
+    color: 'black',
+    fontSize: 18,
+  },
+  btnTxtVisitante: {
     color: 'black',
     fontSize: 18,
   },

@@ -12,19 +12,26 @@ export default function Feedback({ navigation }: any) {
   const { token } = useAuth();
 
   const enviarFeedback = async () => {
-    if (stars === 0) {
-      Alert.alert('Erro', 'Selecione uma quantidade de estrelas');
-      return;
-    }
-    try {
-      await api.post('/feedback', { estrelas: stars, comentario });
-      Alert.alert('Obrigado!', 'Seu feedback foi enviado com sucesso');
-      setStars(0);
-      setComentario('');
-    } catch (err) {
-      Alert.alert('Erro', 'Não foi possível enviar o feedback');
-    }
-  };
+  if (stars === 0) {
+    Alert.alert('Erro', 'Selecione uma quantidade de estrelas');
+    return;
+  }
+  try {
+    const body = { estrelas: stars, comentario };
+    // envia token explicitamente caso o axios não faça isso automaticamente
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+    const res = await api.post('/feedback', body, headers ? { headers } : undefined);
+    console.log('Resposta feedback:', res.data);
+    Alert.alert('Obrigado!', 'Seu feedback foi enviado com sucesso');
+    setStars(0);
+    setComentario('');
+  } catch (err: any) {
+    console.warn('Erro enviarFeedback:', err?.response ?? err);
+    const msg = err?.response?.data?.message || err?.message || 'Não foi possível enviar o feedback';
+    Alert.alert('Erro', msg);
+  }
+};
+
 
   return (
     <View style={styles.container}>

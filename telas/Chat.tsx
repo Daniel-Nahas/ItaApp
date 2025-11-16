@@ -1,3 +1,4 @@
+// telas/Chat.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -16,7 +17,9 @@ import io, { Socket } from 'socket.io-client';
 import api from '../components/Api';
 import { useRoute } from '@react-navigation/native';
 
-// map leet
+// (mantém o restante das funções auxiliar: normalizeClient, containsPalavroes, makeClientId, etc.)
+// ... (copie as funções LEET_MAP, normalizeClient, PalavroesLocal, containsPalavroes, makeClientId, Message interface)
+
 const LEET_MAP: Record<string, string> = {
   '4': 'a', '@': 'a',
   '3': 'e',
@@ -212,48 +215,48 @@ export default function Chat({ navigation }: any) {
   };
 
   return (
-      <View style={styles.container}>
-        <Text style={styles.title}>{routeNameParam ? `Chat - ${routeNameParam}` : 'Chat por Rota'}</Text>
-
-        <FlatList
-          ref={flatRef}
-          data={messages}
-          keyExtractor={(item) => item.id ?? String(Math.random())}
-          renderItem={renderItem}
-          style={{ flex: 1, width: '100%', marginVertical: 10 }}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 12 }}
-          onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: true })}
-          initialNumToRender={20}
-          maxToRenderPerBatch={30}
-          windowSize={21}
-        />
-
-        <View style={[styles.inputContainerChat, { paddingHorizontal: 12, paddingBottom: Platform.OS === 'ios' ? 20 : 12 }]}>
-          <TextInput
-            style={styles.inputChat}
-            placeholder={routeIdParam ? 'Digite sua mensagem...' : 'Selecione uma rota para falar'}
-            value={input}
-            onChangeText={setInput}
-            editable={!!routeIdParam}
-            multiline
-          />
-          <TouchableOpacity style={styles.btnChat} onPress={sendMessage}>
-            <Text style={styles.btnTxt}>Enviar</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/*<View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
-            <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
-            <Image source={require('../assets/nav.png')} style={styles.navIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Opcoes')}>
-            <Text style={styles.btnTxtMap}>O</Text>
-          </TouchableOpacity>
-        </View>*/}
+    <View style={styles.container}>
+      {/* Header com seta para voltar à Rota */}
+      <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10 }}>
+        <TouchableOpacity onPress={() => {
+          if (routeIdParam) {
+            navigation.navigate('Rota', { routeId: routeIdParam, routeName: routeNameParam });
+          } else {
+            navigation.goBack();
+          }
+        }} style={{ padding: 8 }}>
+          {/*<Image source={require('../assets/arrow-left.png')} style={{ width: 22, height: 22, tintColor: '#333' }} />*/}
+        </TouchableOpacity>
+        <Text style={[styles.title, { marginLeft: 8 }]}>{routeNameParam ? `Chat - ${routeNameParam}` : 'Chat por Rota'}</Text>
       </View>
+
+      <FlatList
+        ref={flatRef}
+        data={messages}
+        keyExtractor={(item) => item.id ?? String(Math.random())}
+        renderItem={renderItem}
+        style={{ flex: 1, width: '100%', marginVertical: 10 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 12 }}
+        onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: true })}
+        initialNumToRender={20}
+        maxToRenderPerBatch={30}
+        windowSize={21}
+      />
+
+      <View style={[styles.inputContainerChat, { paddingHorizontal: 12, paddingBottom: Platform.OS === 'ios' ? 20 : 12 }]}>
+        <TextInput
+          style={styles.inputChat}
+          placeholder={routeIdParam ? 'Digite sua mensagem...' : 'Selecione uma rota para falar'}
+          value={input}
+          onChangeText={setInput}
+          editable={!!routeIdParam}
+          multiline
+        />
+        <TouchableOpacity style={styles.btnChat} onPress={sendMessage}>
+          <Text style={styles.btnTxt}>Enviar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }

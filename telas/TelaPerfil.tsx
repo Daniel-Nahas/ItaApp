@@ -1,6 +1,6 @@
 // telas/TelaPerfil.tsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Alert, ScrollView, FlatList } from 'react-native';
 import { useTheme } from './ThemeContext';
 import { useAuth } from './AuthContext';
 import api from '../components/Api';
@@ -11,55 +11,62 @@ export default function TelaPerfil({ navigation }: any) {
   const { userId, logout } = useAuth();
 
   const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
-  const [cpf, setCpf] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
-  const [editando, setEditando] = useState(false);
+  const [favoritas, setFavoritas] = useState<any[]>([]);
+  const [loadingFav, setLoadingFav] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const res = await api.get(`/users/${userId}`);
-        setNome(res.data.nome);
-        setEmail(res.data.email);
-        setCpf(res.data.cpf);
-        setFotoUrl(res.data.foto_url);
+        setNome(res.data.nome || '');
+        setFotoUrl(res.data.foto_url || '');
       } catch {
         Alert.alert('Erro', 'Não foi possível carregar os dados do perfil');
       }
     };
-    fetchUser();
+    if (userId) fetchUser();
   }, [userId]);
 
-  const salvarAlteracoes = async () => {
-    try {
-      // Somente nome e email são atualizáveis aqui
-      await api.put(`/users/${userId}`, { nome, email });
-      Alert.alert('Sucesso', 'Perfil atualizado com sucesso');
-      setEditando(false);
-    } catch {
-      Alert.alert('Erro', 'Falha ao atualizar perfil');
-    }
-  };
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      setLoadingFav(true);
+      try {
+        const res = await api.get(`/users/${userId}/favorites`);
+        // Espera-se que o backend retorne array com { id, nome, total }
+        setFavoritas(Array.isArray(res.data) ? res.data : []);
+      } catch {
+        console.log('Erro ao carregar favoritas');
+        setFavoritas([]);
+      } finally {
+        setLoadingFav(false);
+      }
+    };
+    if (userId) fetchFavorites();
+  }, [userId]);
 
   const alterarFoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
 
-    if (!result.canceled) {
-      const novaFoto = result.assets[0].uri;
-      setFotoUrl(novaFoto);
+      if (!result.canceled) {
+        const novaFoto = result.assets[0].uri;
+        setFotoUrl(novaFoto);
 
-      try {
-        await api.put(`/users/${userId}/photo`, { foto_url: novaFoto });
-        Alert.alert('Foto atualizada', 'A foto foi alterada com sucesso');
-      } catch {
-        Alert.alert('Erro', 'Não foi possível alterar a foto');
+        try {
+          await api.put(`/users/${userId}/photo`, { foto_url: novaFoto });
+          Alert.alert('Foto atualizada', 'A foto foi alterada com sucesso');
+        } catch {
+          Alert.alert('Erro', 'Não foi possível alterar a foto');
+        }
       }
+    } catch (err) {
+      console.warn('Erro ao selecionar imagem:', err);
     }
   };
 
@@ -68,19 +75,46 @@ export default function TelaPerfil({ navigation }: any) {
     navigation.replace('Login');
   };
 
-  const [favoritas, setFavoritas] = useState<any[]>([]);
+  const primeiroNome = (nome || '').split(' ')[0] || '';
 
-  useEffect(() => {
-    const fetchFavorites = async () => {
-      try {
-        const res = await api.get(`/users/${userId}/favorites`);
-        setFavoritas(res.data);
-      } catch {
-        console.log('Erro ao carregar favoritas');
-      }
-    };
-    fetchFavorites();
-  }, [userId]);
+  const renderFavorite = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      key={String(item.id)}
+      style={{
+        width: '100%',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderColor: '#eee',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}
+      onPress={() => {
+        // Navegar para a tela Rota mostrando a rota selecionada
+        navigation.dispatch({
+          ...require('@react-navigation/native').StackActions.replace('Rota', { routeId: item.id, routeName: item.nome }),
+        });
+      }}
+    >
+      <View>
+        <Text style={{ fontWeight: '700' }}>{item.nome}</Text>
+        <Text style={{ color: '#666', marginTop: 4 }}>{item.total ?? 0} buscas</Text>
+      </View>
+      <TouchableOpacity onPress={async () => {
+        // opcional: remoção de favorita (se endpoint existir)
+        try {
+          await api.delete(`/users/${userId}/favorites/${item.id}`);
+          // atualizar lista localmente
+          setFavoritas(prev => prev.filter(f => f.id !== item.id));
+        } catch {
+          Alert.alert('Erro', 'Não foi possível remover das favoritas');
+        }
+      }}>
+        <Text style={{ color: '#d9534f' }}>Remover</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView contentContainerStyle={[styles.container, { alignItems: 'center', padding: 20 }]}>
@@ -88,55 +122,35 @@ export default function TelaPerfil({ navigation }: any) {
 
       <Image
         source={fotoUrl ? { uri: fotoUrl } : require('../assets/splash.png')}
-        style={{ width: 150, height: 150, borderRadius: 75, marginBottom: 20 }}
+        style={{ width: 150, height: 150, borderRadius: 75, marginBottom: 12 }}
       />
 
-      {editando ? (
-        <>
-          <TouchableOpacity style={styles.btn} onPress={alterarFoto}>
-            <Text style={styles.btnTxt}>Alterar Foto</Text>
-          </TouchableOpacity>
+      <Text style={{ fontSize: 18, marginBottom: 16 }}>{`Olá, ${primeiroNome}`}</Text>
 
-          <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Nome" />
-          <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" />
+      <TouchableOpacity style={styles.btn} onPress={alterarFoto}>
+        <Text style={styles.btnTxt}>Alterar Foto</Text>
+      </TouchableOpacity>
 
-          <TouchableOpacity style={styles.btn} onPress={salvarAlteracoes}>
-            <Text style={styles.btnTxt}>Salvar Alterações</Text>
-          </TouchableOpacity>
+      <View style={{ width: '100%', marginTop: 20 }}>
+        <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 8 }}>Rotas favoritas</Text>
 
-          <TouchableOpacity style={styles.backButton} onPress={() => setEditando(false)}>
-            <Text style={styles.btnTxt}>Cancelar</Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        <>
-          <TouchableOpacity style={styles.btn} onPress={() => setEditando(true)}>
-            <Text style={styles.btnTxt}>Editar Perfil</Text>
-          </TouchableOpacity>
+        {loadingFav ? (
+          <Text style={{ color: '#666' }}>Carregando favoritas...</Text>
+        ) : favoritas.length === 0 ? (
+          <Text style={{ color: '#666' }}>Nenhuma rota favorita ainda.</Text>
+        ) : (
+          <FlatList
+            data={favoritas}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={renderFavorite}
+            style={{ width: '100%', borderRadius: 8, overflow: 'hidden' }}
+          />
+        )}
+      </View>
 
-          <View style={styles.profileContainer}>
-            <Text style={styles.profileLabel}>Nome</Text>
-            <Text style={styles.profileValue}>{nome}</Text>
+      <View style={{ height: 20 }} />
 
-            <Text style={styles.profileLabel}>Email</Text>
-            <Text style={styles.profileValue}>{email}</Text>
-
-            <Text style={styles.profileLabel}>CPF</Text>
-            <Text style={styles.profileValue}>{cpf}</Text>
-
-            <Text style={styles.profileLabel}>Rotas favoritas</Text>
-            {favoritas.length === 0 ? (
-              <Text style={styles.profileText}>Nenhuma rota favorita ainda.</Text>
-            ) : (
-              favoritas.map(r => (
-                <Text key={r.id} style={styles.profileValue}>
-                  {r.nome} ({r.total} buscas)
-                </Text>
-              ))
-            )}
-          </View>
-        </>
-      )}
+      <View style={{ height: 60 }} />
 
       {/* Barra de navegação inferior */}
       <View style={styles.bottomNav}>

@@ -1,3 +1,4 @@
+// telas/Rota.tsx
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
@@ -15,7 +16,6 @@ import { useTheme } from './ThemeContext';
 import api from '../components/Api';
 import { useAuth } from './AuthContext';
 import * as Location from 'expo-location';
-import Chat from './Chat'; // Chat atualizado (aceita routeId via navigation params)
 import { StackActions } from '@react-navigation/native';
 
 type RouteItem = {
@@ -42,13 +42,15 @@ export default function Rota({ navigation, route }: any) {
   const busAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(busAnim, { toValue: 30, duration: 700, useNativeDriver: true, easing: Easing.linear }),
         Animated.timing(busAnim, { toValue: -30, duration: 700, useNativeDriver: true, easing: Easing.linear }),
       ])
-    ).start();
-  }, []);
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [busAnim]);
 
   useEffect(() => {
     const getLocation = async () => {
@@ -129,50 +131,105 @@ export default function Rota({ navigation, route }: any) {
     );
   }
 
-  // Se veio param routeId: exibir apenas a rota selecionada e o chat dela
+  // Branch: rota selecionada por param
   if (selectedRouteIdParam) {
     const selectedRoute = routes.find(r => Number(r.id) === Number(selectedRouteIdParam));
-    const pontos = (selectedRoute?.pontos as any) || [];
+
+    if (!selectedRoute) {
+      return (
+        <View style={styles.container}>
+          <Text style={styles.title}>Rota não encontrada</Text>
+          <TouchableOpacity style={styles.btn} onPress={() => navigation.goBack()}>
+            <Text style={styles.btnTxt}>Voltar</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const pontos = (selectedRoute.pontos as any) || [];
     const coords = Array.isArray(pontos) ? pontos.map((p: any) => ({ latitude: Number(p.lat), longitude: Number(p.lng) })) : [];
+
+    const centerLat = coords.length ? coords[0].latitude : (userLocation.latitude ?? -24.19);
+    const centerLng = coords.length ? coords[0].longitude : (userLocation.longitude ?? -46.78);
 
     return (
       <View style={styles.container}>
-        <Text style={[styles.title, { marginTop: 12 }]}>{selectedRoute?.nome ?? selectedRouteNameParam}</Text>
+        <Text style={[styles.title, { marginTop: 12 }]}>{selectedRoute.nome ?? selectedRouteNameParam}</Text>
 
         <MapView
           provider={PROVIDER_GOOGLE}
           style={{ flex: 1, width: '100%' }}
           initialRegion={{
-            latitude: userLocation?.latitude ?? -24.19,
-            longitude: userLocation?.longitude ?? -46.78,
+            latitude: centerLat,
+            longitude: centerLng,
             latitudeDelta: 0.02,
             longitudeDelta: 0.02,
           }}
           showsUserLocation={!visitante}
         >
-          {busPositions.map(bus => bus.latitude && bus.longitude && (
-            <Marker key={bus.id} coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }} title={`Ônibus ${bus.id}`} pinColor="blue" />
-          ))}
+          {busPositions.map((bus, i) =>
+            bus.latitude && bus.longitude ? (
+              <Marker
+                key={String(bus.id ?? i)}
+                coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }}
+                title={`Ônibus ${bus.id}`}
+                pinColor="blue"
+              />
+            ) : null
+          )}
 
-          {coords.length >= 2 && <Polyline coordinates={coords} strokeColor={'green'} strokeWidth={4} />}
+          {coords.length >= 2 && <Polyline key={String(selectedRoute.id ?? 'route')} coordinates={coords} strokeColor={'green'} strokeWidth={4} />}
         </MapView>
 
-        <View style={{ height: 360, width: '100%' }}>
-          <Chat />
-        </View>
+        {/* Botão de Chat: mostra apenas para usuários autenticados */}
+        {!visitante && (
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate('Chat', {
+                routeId: Number(selectedRouteIdParam),
+                routeName: selectedRoute.nome ?? selectedRouteNameParam,
+              })
+            }
+            style={{
+              position: 'absolute',
+              right: 18,
+              bottom: 100,
+              backgroundColor: '#2b8aef',
+              padding: 12,
+              borderRadius: 28,
+              elevation: 5,
+              shadowColor: '#000',
+              shadowOpacity: 0.2,
+              shadowOffset: { width: 0, height: 2 },
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir chat da rota"
+          >
+            {/*Coloca aqui o icone de chat<Image source={require('../assets/chat-icon.png')} style={{ width: 26, height: 26, tintColor: '#fff' }} />*/}
+          </TouchableOpacity>
+        )}
 
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
-            <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
-            <View style={styles.activeIndicator} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
-            <Image source={require('../assets/nav.png')} style={styles.navIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Opcoes')}>
-            <Text style={styles.btnTxtMap}>O</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Barra inferior: para visitante volta ao Map; para autenticado mostra itens normais */}
+        {visitante ? (
+          <View style={styles.bottomNav}>
+            <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
+              <Text style={styles.btnTxtMap}>Voltar ao Mapa</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.bottomNav}>
+            <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
+              <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
+              <View style={styles.activeIndicator} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
+              <Image source={require('../assets/nav.png')} style={styles.navIcon} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Opcoes')}>
+              <Text style={styles.btnTxtMap}>O</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     );
   }
@@ -218,14 +275,13 @@ export default function Rota({ navigation, route }: any) {
           {filteredRoutes.length === 0 ? (
             <Text style={{ color: '#666' }}>Nenhuma rota encontrada</Text>
           ) : (
-            filteredRoutes.map(r => (
+            filteredRoutes.map((r, index) => (
               <TouchableOpacity
-                key={String(r.id)}
+                key={String(r.id ?? index)}
                 style={{ paddingVertical: 8 }}
                 onPress={() => {
                   registrarBusca(r.id!);
-                  // navega para a mesma tela passando params; aqui uso dispatch para compatibilidade
-                  navigation.dispatch(StackActions.replace('Rota', { routeId: r.id, routeName: r.nome }));
+                  navigation.navigate('Rota', { routeId: r.id, routeName: r.nome });
                 }}
               >
                 <Text style={{ fontSize: 16 }}>{r.nome}</Text>
@@ -246,22 +302,29 @@ export default function Rota({ navigation, route }: any) {
         }}
         showsUserLocation={!visitante}
       >
-        {busPositions.map(bus => bus.latitude && bus.longitude && (
-          <Marker key={bus.id} coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }} title={`Ônibus ${bus.id}`} pinColor="blue" />
-        ))}
+        {busPositions.map((bus, i) =>
+          bus.latitude && bus.longitude ? (
+            <Marker
+              key={String(bus.id ?? i)}
+              coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }}
+              title={`Ônibus ${bus.id}`}
+              pinColor="blue"
+            />
+          ) : null
+        )}
 
         {filteredRoutes.map((r, index) => {
           const pontos = (r.pontos as any) || [];
           const coords = Array.isArray(pontos) ? pontos.map((p: any) => ({ latitude: Number(p.lat), longitude: Number(p.lng) })) : [];
           if (coords.length < 2) return null;
-          return <Polyline key={r.id ?? index} coordinates={coords} strokeColor={index % 2 === 0 ? 'green' : 'red'} strokeWidth={4} />;
+          return <Polyline key={String(r.id ?? index)} coordinates={coords} strokeColor={index % 2 === 0 ? 'green' : 'red'} strokeWidth={4} />;
         })}
       </MapView>
 
       {visitante ? (
         <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Login')}>
-            <Text style={styles.btnTxtMap}>Login</Text>
+          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
+            <Text style={styles.btnTxtMap}>Voltar ao Mapa</Text>
           </TouchableOpacity>
         </View>
       ) : (

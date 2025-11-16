@@ -48,34 +48,33 @@ export default function Login({ navigation }: any) {
         value={senha}
         onChangeText={setSenha}
       />
-
-      <TouchableOpacity style={styles.btn} onPress={toggleTheme}>
-        <Text style={styles.btnTxt}>{isAccessible ? 'Modo Padrão' : 'Modo Acessível'}</Text>
+      
+      <TouchableOpacity style={styles.btnEsqueciSenha} onPress={() => navigation.navigate('EsqueciSenha')}>
+        <Text style={styles.esqueciSenhaTxt}>Esqueci a Senha</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.btnEntrar} onPress={handleLogin}>
         <Text style={styles.btnTxtEntrar}>Entrar</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={styles.btnCad} onPress={() => navigation.navigate('Register')}>
+        <Text style={styles.btnTxtCad}>Cadastrar</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity
-        style={styles.btn}
+        style={styles.btnVisitante}
         onPress={() => {
           loginComoVisitante();
           navigation.replace('Map');
         }}
       >
-        <Text style={styles.btnTxt}>Entrar como visitante</Text>
+        <Text style={styles.btnTxtVisitante}>Entrar como visitante</Text>
       </TouchableOpacity>
 
-
-
-      <TouchableOpacity style={styles.btnCad} onPress={() => navigation.navigate('Register')}>
-        <Text style={styles.btnTxtCad}>Cadastrar</Text>
+      <TouchableOpacity style={styles.btn} onPress={toggleTheme}>
+        <Text style={styles.btnTxt}>{isAccessible ? 'Modo Padrão' : 'Modo Acessível'}</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity style={styles.btnEsqueciSenha} onPress={() => navigation.navigate('EsqueciSenha')}>
-        <Text style={styles.esqueciSenhaTxt}>Esqueci a Senha</Text>
-      </TouchableOpacity>
+      
     </View>
   );
 }

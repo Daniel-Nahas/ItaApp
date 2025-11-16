@@ -5,7 +5,6 @@ const Palavroes = [
   "bitch", "asshole", "motherfucker", "mierda", "gilipollas"
 ];
 
-// Map de substituição leet -> letra
 const LEET_MAP: Record<string, string> = {
   '4': 'a', '@': 'a',
   '3': 'e',
@@ -21,59 +20,52 @@ const LEET_MAP: Record<string, string> = {
 
 const normalizeText = (msg: string) => {
   if (!msg) return '';
-  // normaliza acentos e minuscula
   let s = msg.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  // substituir caracteres leet por letras
   s = s.split('').map(ch => LEET_MAP[ch] || ch).join('');
-  // remover caracteres que não são letras ou dígitos (mantém espaços)
   s = s.replace(/[^a-z0-9\s]/g, ' ');
-  // colapsar múltiplos espaços
   s = s.replace(/\s+/g, ' ').trim();
   return s;
 };
 
-const isAcronymMatch = (clean: string, bad: string) => {
-  /* ex: "fdp" deve corresponder a "filhodaputa"
-  gerar acrônimo de palavra ruim ( primeiras letras de cada sílaba/pedaço ) não é trivial
-  fazemos verificação simples: se bad tiver >=6 caracteres e clean contém as iniciais
-  também consideramos siglas diretas (fdp no array) */
-  if (bad.length <= 4) return false;
-  // extrair primeiras letras das palavras dentro de bad: ex filhodaputa -> fdp
-  const initials = bad.split(/[^a-z0-9]+/).map(w => w[0]).join('');
-  return initials && clean.includes(initials);
+/**
+ * Gera "iniciais" apenas quando bad contém pelo menos 2 tokens separados por não alfanuméricos
+ * e garante que initials tenha pelo menos 2 caracteres (evita matches por 1 letra somente).
+ */
+const getInitialsIfMultiToken = (bad: string) => {
+  const parts = bad.split(/[^a-z0-9]+/).filter(Boolean);
+  if (parts.length < 2) return '';
+  const initials = parts.map(w => w[0]).join('');
+  return initials.length >= 2 ? initials : '';
 };
 
 export const containsBadWords = (msg: string) => {
   const clean = normalizeText(msg);
-
   if (!clean) return false;
 
-  // checar palavra por palavra
+  // tokens da mensagem
   const words = clean.split(' ').filter(Boolean);
 
-  // checagem direta: cada palavrão aparece em qualquer posição (substring)
+  // 1) checagem por token exato rápido (mais seguro)
+  for (const w of words) {
+    if (Palavroes.includes(w)) return true;
+  }
+
+  // 2) checagem de siglas explícitas (lista controlada)
+  const SIGLAS = ['fdp','pqp','vcf','vag'];
+  for (const token of words) {
+    if (SIGLAS.includes(token)) return true;
+  }
+
+  // 3) checagem por substring em casos legítimos (covers tentativas como "b0sta" -> "bosta")
+  // mas mantenha isso depois das checagens por token para reduzir falsos positivos
   for (const bad of Palavroes) {
     if (clean.includes(bad)) return true;
   }
 
-  // checa palavras exatas (evita falsos positivos)
-  for (const w of words) {
-    for (const bad of Palavroes) {
-      if (w === bad) return true;
-    }
-  }
-
-  // checa siglas/abreviações: se a mensagem contém um token curto que corresponde a abreviação comum
-  // lista de siglas explícitas
-  const SIGLAS = ['fdp', 'vcf', 'vag', 'pqp']; // outras siglas bloqueáveis podem ser acrescentadas
-  for (const token of words) {
-    if (SIGLAS.includes(token)) return true;
-    // detectar tokens muito similares (ex: f1d4 -> depois da normalização vira fida -> cobrimos em includes)
-  }
-
-  // checagem de "iniciais" para casos como "filhodaputa" -> "fdp"
+  // 4) checagem de acrônimos apenas para palavras ruins compostas (ex.: "filho da puta" -> fdp)
   for (const bad of Palavroes) {
-    if (isAcronymMatch(clean, bad)) return true;
+    const initials = getInitialsIfMultiToken(bad);
+    if (initials && clean.includes(initials)) return true;
   }
 
   return false;

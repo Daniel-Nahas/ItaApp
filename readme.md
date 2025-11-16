@@ -152,9 +152,6 @@ sql
 -- Criar tipo ENUM para rotas
 CREATE TYPE tipo_rota AS ENUM ('ida', 'volta');
 
--- Criar tipo ENUM para rotas
-CREATE TYPE tipo_rota AS ENUM ('ida', 'volta');
-
 -- Usuários
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -225,6 +222,20 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   used BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Criar tabela para tokens de alteração de e-mail
+CREATE TABLE IF NOT EXISTS email_change_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  new_email VARCHAR(255) NOT NULL,
+  token VARCHAR(255) NOT NULL UNIQUE,
+  expires_at TIMESTAMP NOT NULL,
+  used BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_change_token ON email_change_tokens(token);
+
 
 -- Índice para buscar por token rapidamente
 CREATE INDEX IF NOT EXISTS idx_password_reset_token ON password_reset_tokens(token);
