@@ -16,10 +16,18 @@ import Rota from './telas/Rota';
 
 import { AuthProvider } from './telas/AuthContext';
 import { ThemeProvider } from './telas/ThemeContext';
+import { useFonts } from 'expo-font';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    // Caminho da fonte ajustado. Se App.tsx estiver na raiz, 
+    // ele procura a pasta assets/fonts na mesma raiz.
+    regular: require('./assets/fonts/Onest-Regular.ttf'), 
+    bold: require('./assets/fonts/Onest-Bold.ttf'),
+  });
+
   return (
     <AuthProvider>
       <ThemeProvider>

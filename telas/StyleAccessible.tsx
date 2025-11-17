@@ -1,5 +1,7 @@
 // telas/StyleAccessible.tsx
 import { StyleSheet } from 'react-native';
+const normal = 'regular';
+const grossa = 'bold';
 
 export const accessibleStyles = StyleSheet.create({
   container: {
@@ -10,8 +12,8 @@ export const accessibleStyles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 160,
-    height: 160,
+    width: 150,
+    height: 150,
     resizeMode: 'contain',
     marginBottom: 50,
   },
@@ -24,66 +26,70 @@ export const accessibleStyles = StyleSheet.create({
     marginBottom: 60,
   },
   label: {
-    fontSize: 18,
-    color: '#111', // contraste mais forte
+    fontSize: 20,
+    color: '#000000ff', // contraste mais forte
     marginBottom: 8,
     textAlign: 'left',
   },
-  input: {
-    width: '100%',
-    height: 55,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    fontSize: 18,
-    color: '#111',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
+   labelinput: {
+    fontSize: 20,
+    color: '#02251fff',
+    marginBottom: 10,
+    fontFamily: normal,
+    fontWeight: 'bold'
+  },
+   input: {
+  width: '90%',
+  height: 50,
+  backgroundColor: 'white',
+  borderColor: '#003366',
+  borderWidth: 2,
+  borderRadius: 25,
+  paddingHorizontal: 15,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 5,
+  elevation: 3,
+  marginBottom: 10,
+  fontFamily: 'regular'
   },
   inputChat: {
     width: '100%',
-    height: 55,
+    height: 50,
     backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    fontSize: 18,
-    color: '#111',
+    borderRadius: 25,
+    paddingHorizontal: 15,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
   },
   inputFocus: {
     borderColor: '#ff7f50', // destaque no foco
     borderWidth: 2,
   },
   btnEsqueciSenha: {
-    alignSelf: 'flex-end',
-    marginBottom: 25,
+    alignSelf: 'center',
+    marginBottom: 20,
+    marginTop : 20,
   },
   esqueciSenhaTxt: {
-    color: '#ff7f50',
-    fontSize: 16,
+    color: '#f24100ff',
+    fontSize: 14,
     fontWeight: '600',
+
   },
   btnEntrar: {
-    width: '100%',
-    height: 55,
-    backgroundColor: '#ff7f50',
-    borderRadius: 12,
+    width: '90%',
+    height: 50,
+    backgroundColor: '#f24100ff',
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginTop : 10,
   },
   btnTxtEntrar: {
     color: 'white',
@@ -91,13 +97,13 @@ export const accessibleStyles = StyleSheet.create({
     fontWeight: '700',
   },
   btnCad: {
-    width: '100%',
-    height: 55,
+    width: '90%',
+    height: 50,
     backgroundColor: '#003366',
-    borderRadius: 12,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   btnTxtCad: {
     color: 'white',
@@ -105,10 +111,10 @@ export const accessibleStyles = StyleSheet.create({
     fontWeight: '600',
   },
   btn: {
-    width: '100%',
+    width: '90%',
     height: 55,
     backgroundColor: '#004d40',
-    borderRadius: 12,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -150,7 +156,7 @@ export const accessibleStyles = StyleSheet.create({
     paddingHorizontal: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: '#000000ff',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -161,7 +167,7 @@ export const accessibleStyles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 18,
-    color: '#111',
+    color: '#000000ff',
   },
   searchIcon: {
     marginLeft: 12,
@@ -174,7 +180,7 @@ export const accessibleStyles = StyleSheet.create({
   },
   mainText: {
     fontSize: 20,
-    color: '#222',
+    color: '#000000ff',
     textAlign: 'center',
     marginBottom: 20,
   },

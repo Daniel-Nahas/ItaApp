@@ -1,6 +1,6 @@
 // telas/Opcoes.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Image, StyleSheet } from 'react-native';
 import { useTheme } from './ThemeContext';
 import { useAuth } from './AuthContext';
 
@@ -18,30 +18,31 @@ export default function Opcoes({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Opções</Text>
+    <View style={styles.containerOpcoes}>
+      <Image source={require('../assets/option.png')} style={styles.imagemOpt} />
+      <Text style={styles.OpcoesTitle}>Opções</Text>
 
-      <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('Feedback')}>
-        <Text style={styles.btnTxt}>Enviar Feedback</Text>
+      <TouchableOpacity style={styles.OpcoesBtn} onPress={() => navigation.navigate('Feedback')}>
+        <Text style={styles.OpcoesBtnTxt}>Enviar Feedback</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('AlterarSenha')}>
-        <Text style={styles.btnTxt}>Alterar Senha</Text>
+      <TouchableOpacity style={styles.OpcoesBtn} onPress={() => navigation.navigate('AlterarSenha')}>
+        <Text style={styles.OpcoesBtnTxt}>Alterar Senha</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.btn} onPress={handleLogout}>
-        <Text style={styles.btnTxt}>Sair</Text>
+      <TouchableOpacity style={styles.OpcoesBtn} onPress={handleLogout}>
+        <Text style={styles.OpcoesBtnSairTxt}>Sair</Text>
       </TouchableOpacity>
 
       <View style={styles.bottomNav}>
             <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
-                <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
+                <Image source={require('../assets/home.png')} style={styles.navIcon} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
-                <Image source={require('../assets/nav.png')} style={styles.navIcon} />
+                <Image source={require('../assets/perfil.png')} style={styles.navIcon} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.navItem} >
-                <Text style={styles.btnTxtMap}>O</Text>
+                <Image source={require('../assets/opcao2.png')} style={styles.navIcon} />
                 <View style={styles.activeIndicator} />
             </TouchableOpacity>
         </View>  
@@ -49,3 +50,53 @@ export default function Opcoes({ navigation }: any) {
     </View>
   );
 }
+  
+  const normal = 'regular';
+  const grossa = 'bold';
+  const localStyles = StyleSheet.create({
+
+  
+  OpcoesBtn: {
+    width: '90%',
+    height: 50,
+    backgroundColor: '#F5F5DC',
+    borderRadius: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+
+  OpcoesBtnTxt: {
+    color: '#003366',
+    fontSize: 18,
+    fontFamily: grossa,
+    fontWeight: 'bold',
+  },
+
+   OpcoesBtnSairTxt: {
+    color: '#ff0000ff',
+    fontSize: 18,
+    fontFamily: grossa,
+    fontWeight: 'bold',
+  },
+
+    imagemOpt:{
+    width:120,
+    height:120,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+
+    OpcoesTitle:{
+
+    fontFamily: grossa,
+    fontWeight: 'bold',
+    fontSize: 30,
+    color: '#F5F5DC',
+    marginBottom: 10,
+    alignSelf: 'center',
+    textAlign: 'center',
+
+  },
+
+})

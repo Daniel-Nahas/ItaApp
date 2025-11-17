@@ -29,32 +29,36 @@ export default function Login({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/logo2.svg')} style={styles.logo} />
-      
+      <Image source={require('../assets/logo1.png')} style={styles.logo} />
+       <Text style={styles.labelinput}>Insira seu E-mail</Text>
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor={isAccessible ? '#ccc' : '#666'}
+        placeholderTextColor={isAccessible ? '#000000ff' : '#666'}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
+       <Text style={styles.labelinput}>Digite sua senha</Text>
       <TextInput
         style={styles.input}
         placeholder="Senha"
-        placeholderTextColor={isAccessible ? '#ccc' : '#666'}
+        placeholderTextColor={isAccessible ? '#000000ff' : '#666'}
         secureTextEntry
         value={senha}
         onChangeText={setSenha}
       />
-
-      <TouchableOpacity style={styles.btn} onPress={toggleTheme}>
-        <Text style={styles.btnTxt}>{isAccessible ? 'Modo Padrão' : 'Modo Acessível'}</Text>
-      </TouchableOpacity>
-
       <TouchableOpacity style={styles.btnEntrar} onPress={handleLogin}>
         <Text style={styles.btnTxtEntrar}>Entrar</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.btnEsqueciSenha} onPress={() => navigation.navigate('EsqueciSenha')}>
+        <Text style={styles.esqueciSenhaTxt}>Esqueci a Senha</Text>
+      </TouchableOpacity>
+
+       <TouchableOpacity style={styles.btn} onPress={toggleTheme}>
+        <Text style={styles.btnTxt}>{isAccessible ? 'Modo Padrão' : 'Modo Acessível'}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -73,9 +77,7 @@ export default function Login({ navigation }: any) {
         <Text style={styles.btnTxtCad}>Cadastrar</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.btnEsqueciSenha} onPress={() => navigation.navigate('EsqueciSenha')}>
-        <Text style={styles.esqueciSenhaTxt}>Esqueci a Senha</Text>
-      </TouchableOpacity>
+      
     </View>
   );
 }

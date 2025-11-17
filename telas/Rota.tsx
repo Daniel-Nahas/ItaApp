@@ -9,13 +9,14 @@ import {
   Easing,
   TextInput,
   ScrollView,
+  StyleSheet,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useTheme } from './ThemeContext';
 import api from '../components/Api';
 import { useAuth } from './AuthContext';
 import * as Location from 'expo-location';
-import Chat from './Chat'; // Chat atualizado (aceita routeId via navigation params)
+import Chat from './Chat';
 import { StackActions } from '@react-navigation/native';
 
 type RouteItem = {
@@ -150,28 +151,16 @@ export default function Rota({ navigation, route }: any) {
           }}
           showsUserLocation={!visitante}
         >
-          {busPositions.map(bus => bus.latitude && bus.longitude && (
-            <Marker key={bus.id} coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }} title={`Ônibus ${bus.id}`} pinColor="blue" />
-          ))}
-
           {coords.length >= 2 && <Polyline coordinates={coords} strokeColor={'green'} strokeWidth={4} />}
         </MapView>
 
-        <View style={{ height: 360, width: '100%' }}>
-          <Chat />
-        </View>
-
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
-            <Image source={require('../assets/onibus.png')} style={styles.navIcon} />
-            <View style={styles.activeIndicator} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Perfil')}>
-            <Image source={require('../assets/nav.png')} style={styles.navIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Opcoes')}>
-            <Text style={styles.btnTxtMap}>O</Text>
-          </TouchableOpacity>
+        {/* CHAT INTEGRADO: ENVIANDO PROPS E PASSANDO navigation */}
+        <View style={rotaStyles.chatContainer}>
+          <Chat 
+            routeId={selectedRouteIdParam} 
+            routeName={selectedRouteNameParam} 
+            navigation={navigation} // 🛑 ESSENCIAL: Passando a navigation
+          /> 
         </View>
       </View>
     );
@@ -224,7 +213,6 @@ export default function Rota({ navigation, route }: any) {
                 style={{ paddingVertical: 8 }}
                 onPress={() => {
                   registrarBusca(r.id!);
-                  // navega para a mesma tela passando params; aqui uso dispatch para compatibilidade
                   navigation.dispatch(StackActions.replace('Rota', { routeId: r.id, routeName: r.nome }));
                 }}
               >
@@ -258,6 +246,7 @@ export default function Rota({ navigation, route }: any) {
         })}
       </MapView>
 
+      {/* BARRA DE NAVEGAÇÃO PADRÃO (MAPA GERAL) */}
       {visitante ? (
         <View style={styles.bottomNav}>
           <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Login')}>
@@ -280,3 +269,15 @@ export default function Rota({ navigation, route }: any) {
     </View>
   );
 }
+
+// ESTILOS LOCAIS PARA O CHAT INTEGRADO
+const rotaStyles = StyleSheet.create({
+    chatContainer: {
+        height: 360, 
+        width: '100%', 
+        position: 'absolute', 
+        bottom: 0, 
+        zIndex: 5,
+        backgroundColor: 'white', 
+    },
+});

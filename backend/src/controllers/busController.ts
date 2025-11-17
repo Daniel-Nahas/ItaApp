@@ -4,7 +4,7 @@ import { createRoute, getAllRoutes } from '../models/busModel';
 import { pool } from '../utils/db';
 
 // Definição das rotas
-const rota1Ida = [
+{/*const rota1Ida = [
   { lat: -24.1961, lng: -46.7750 },
   { lat: -24.1970, lng: -46.7745 },
   { lat: -24.1980, lng: -46.7740 },
@@ -45,7 +45,6 @@ const rota3Ida = [
   { lat: -24.1940, lng: -46.7755 }
 ];
 const rota3Volta = [...rota3Ida].reverse();
-
 // Função para garantir que as rotas existam
 export const ensureRoutes = async () => {
   const routes = await getAllRoutes();
@@ -62,6 +61,7 @@ export const ensureRoutes = async () => {
     console.log('Rotas padrão inseridas no banco.');
   }
 };
+*/}
 
 // Listar rotas
 export const listRoutes = async (_req: Request, res: Response) => {

@@ -1,6 +1,6 @@
 // telas/Register.tsx
 import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, Image, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { isValidCPF } from '../backend/src/utils/validators';
 import { useTheme } from './ThemeContext';
 import api from '../components/Api';
@@ -54,12 +54,13 @@ export default function Register({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Cadastro</Text>
-      <TextInput style={styles.input} placeholder="Nome" value={nome} onChangeText={setNome} />
-      <TextInput style={styles.input} placeholder="CPF (somente números)" value={cpf} onChangeText={setCpf} keyboardType="number-pad" />
-      <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-      <TextInput style={styles.input} placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
-      <TextInput style={styles.input} placeholder="Confirmar senha" value={senha2} onChangeText={setSenha2} secureTextEntry />
+      <Image source={require('../assets/logo1.png')} style={styles.imagemcad} />
+      <Text style={styles.labelcad}>Crie sua conta e vamos embarcar!</Text>
+      <TextInput style={styles.inputcad} placeholder="Nome" value={nome} onChangeText={setNome} />
+      <TextInput style={styles.inputcad} placeholder="CPF (somente números)" value={cpf} onChangeText={setCpf} keyboardType="number-pad" />
+      <TextInput style={styles.inputcad} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+      <TextInput style={styles.inputcad} placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
+      <TextInput style={styles.inputcad} placeholder="Confirmar senha" value={senha2} onChangeText={setSenha2} secureTextEntry />
 
       <View style={{ marginVertical: 8 }}>
         <Text style={{ fontWeight: 'bold' }}>Requisitos da senha:</Text>
