@@ -10,6 +10,7 @@ import {
   Easing,
   TextInput,
   ScrollView,
+  InteractionManager,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useTheme } from './ThemeContext';
@@ -106,14 +107,97 @@ export default function Rota({ navigation, route }: any) {
     return routes.filter(r => (r.nome || '').toLowerCase().includes(q));
   }, [routes, query]);
 
+  // registrar busca: enviar apenas routeId (backend deve extrair userId do token)
   const registrarBusca = async (routeId: number) => {
     try {
-      await api.post('/users/route-search', { userId, routeId });
-    } catch (err) {
-      console.log('Erro ao registrar busca de rota:', err);
+      await api.post('/users/route-search', { routeId });
+    } catch (err: any) {
+      console.error('Erro ao registrar busca de rota:', err?.response?.status, err?.response?.data || err?.message || err);
     }
   };
 
+  // -------------------------
+  // Hooks / estado para fake tracking (TOPO, ordem estável)
+  // -------------------------
+  const mapRef = useRef<MapView | null>(null);
+  const fakeIntervalRef = useRef<number | null>(null);
+  const [fakeIndex, setFakeIndex] = useState(0);
+  const [fakePos, setFakePos] = useState<{ latitude: number; longitude: number } | null>(null);
+  const followMarkerRef = useRef(true);
+
+  // selectedRoute e coords calculados com useMemo (não condicionais)
+  const selectedRoute = useMemo(() => {
+    if (!selectedRouteIdParam) return null;
+    return routes.find(r => Number(r.id) === Number(selectedRouteIdParam)) || null;
+  }, [routes, selectedRouteIdParam]);
+
+  const coords = useMemo(() => {
+    const pontos = (selectedRoute?.pontos as any) || [];
+    return Array.isArray(pontos) ? pontos.map((p: any) => ({ latitude: Number(p.lat), longitude: Number(p.lng) })) : [];
+  }, [selectedRoute]);
+
+  // efeito top-level para fake tracking (inicia/limpa interval)
+  useEffect(() => {
+    // limpa anterior
+    if (fakeIntervalRef.current) {
+      clearInterval(fakeIntervalRef.current);
+      fakeIntervalRef.current = null;
+    }
+
+    if (!coords || coords.length === 0) {
+      setFakePos(null);
+      setFakeIndex(0);
+      return;
+    }
+
+    if (visitante) {
+      setFakePos(null);
+      setFakeIndex(0);
+      return;
+    }
+
+    // iniciar no primeiro ponto
+    setFakePos(coords[0]);
+    setFakeIndex(0);
+
+    const STEP_MS = 1000; // ajuste de velocidade
+    let idx = 0;
+
+    fakeIntervalRef.current = (setInterval(() => {
+      idx = (idx + 1) % coords.length;
+      const next = coords[idx];
+      setFakePos(next);
+      setFakeIndex(idx);
+
+      if (followMarkerRef.current && mapRef.current && next) {
+        InteractionManager.runAfterInteractions(() => {
+          try {
+            mapRef.current?.animateCamera(
+              {
+                center: { latitude: next.latitude, longitude: next.longitude },
+                pitch: 0,
+                heading: 0,
+                zoom: 16,
+              },
+              { duration: 600 }
+            );
+          } catch (e) {
+            // silencioso
+          }
+        });
+      }
+    }, STEP_MS) as unknown) as number;
+
+    return () => {
+      if (fakeIntervalRef.current) {
+        clearInterval(fakeIntervalRef.current);
+        fakeIntervalRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(coords), visitante]);
+
+  // proteção: enquanto carrega ou sem localização válida
   if (loading || !userLocation) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }]}>
@@ -133,8 +217,6 @@ export default function Rota({ navigation, route }: any) {
 
   // Branch: rota selecionada por param
   if (selectedRouteIdParam) {
-    const selectedRoute = routes.find(r => Number(r.id) === Number(selectedRouteIdParam));
-
     if (!selectedRoute) {
       return (
         <View style={styles.container}>
@@ -146,9 +228,6 @@ export default function Rota({ navigation, route }: any) {
       );
     }
 
-    const pontos = (selectedRoute.pontos as any) || [];
-    const coords = Array.isArray(pontos) ? pontos.map((p: any) => ({ latitude: Number(p.lat), longitude: Number(p.lng) })) : [];
-
     const centerLat = coords.length ? coords[0].latitude : (userLocation.latitude ?? -24.19);
     const centerLng = coords.length ? coords[0].longitude : (userLocation.longitude ?? -46.78);
 
@@ -157,6 +236,9 @@ export default function Rota({ navigation, route }: any) {
         <Text style={[styles.title, { marginTop: 12 }]}>{selectedRoute.nome ?? selectedRouteNameParam}</Text>
 
         <MapView
+          ref={(r) => {
+            mapRef.current = r;
+          }}
           provider={PROVIDER_GOOGLE}
           style={{ flex: 1, width: '100%' }}
           initialRegion={{
@@ -179,6 +261,13 @@ export default function Rota({ navigation, route }: any) {
           )}
 
           {coords.length >= 2 && <Polyline key={String(selectedRoute.id ?? 'route')} coordinates={coords} strokeColor={'green'} strokeWidth={4} />}
+
+          {/* marcador fake que simula um ônibus em movimento */}
+          {fakePos && (
+            <Marker key={`fake-${fakeIndex}`} coordinate={fakePos} title={`Ônibus simulado`} pinColor="orange">
+              <Image source={require('../assets/onibus.png')} style={{ width: 36, height: 36, tintColor: 'orange' }} />
+            </Marker>
+          )}
         </MapView>
 
         {/* Botão de Chat: mostra apenas para usuários autenticados */}
@@ -205,7 +294,8 @@ export default function Rota({ navigation, route }: any) {
             accessibilityRole="button"
             accessibilityLabel="Abrir chat da rota"
           >
-            {/*Coloca aqui o icone de chat<Image source={require('../assets/chat-icon.png')} style={{ width: 26, height: 26, tintColor: '#fff' }} />*/}
+            {/*COLOCAR UM ICONE DE CHAT AQUI
+            <Image source={require('../assets/chat-icon.png')} style={{ width: 26, height: 26, tintColor: '#fff' }} /> */}
           </TouchableOpacity>
         )}
 
@@ -304,12 +394,7 @@ export default function Rota({ navigation, route }: any) {
       >
         {busPositions.map((bus, i) =>
           bus.latitude && bus.longitude ? (
-            <Marker
-              key={String(bus.id ?? i)}
-              coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }}
-              title={`Ônibus ${bus.id}`}
-              pinColor="blue"
-            />
+            <Marker key={String(bus.id ?? i)} coordinate={{ latitude: Number(bus.latitude), longitude: Number(bus.longitude) }} title={`Ônibus ${bus.id}`} pinColor="blue" />
           ) : null
         )}
 

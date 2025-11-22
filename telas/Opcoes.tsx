@@ -18,32 +18,9 @@ export default function Opcoes({ navigation }: any) {
     }
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Excluir conta',
-      'Tem certeza que deseja excluir sua conta permanentemente? Esta ação não pode ser desfeita.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete('/users/me', token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
-              // após exclusão, efetuar logout local e navegar para Login
-              await logout();
-              Alert.alert('Conta excluída', 'Sua conta foi excluída com sucesso.');
-              navigation.replace('Login');
-            } catch (err: any) {
-              console.warn('Erro excluir conta:', err);
-              const msg = err?.response?.data?.message || 'Erro ao excluir conta';
-              Alert.alert('Erro', msg);
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+  // Navega para a tela de confirmação/ação de exclusão
+  const goToExcluirConta = () => {
+    navigation.navigate('ExcluirConta');
   };
 
   return (
@@ -62,7 +39,7 @@ export default function Opcoes({ navigation }: any) {
         <Text style={styles.btnTxt}>Alterar Email</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.btn, { backgroundColor: '#ffdddd' }]} onPress={handleDeleteAccount}>
+      <TouchableOpacity style={[styles.btn, { backgroundColor: '#ffdddd' }]} onPress={goToExcluirConta}>
         <Text style={[styles.btnTxt, { color: '#a00' }]}>Excluir Conta</Text>
       </TouchableOpacity>
 
