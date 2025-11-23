@@ -16,7 +16,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || '';
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 export const register = async (req: AuthRequest, res: Response) => {
-  const { nome, email, senha, cpf } = req.body;
+  const { nome, email, senha, cpf, role = 'user', placa } = req.body;
 
   if (!nome || !email || !senha || !cpf) {
     return res.status(400).json({ success: false, message: 'Todos os campos são obrigatórios' });
@@ -35,14 +35,39 @@ export const register = async (req: AuthRequest, res: Response) => {
   try {
     const hashed = await bcrypt.hash(senha, 10);
     const result = await pool.query(
-      'INSERT INTO users (nome, email, senha_hash, cpf) VALUES ($1, $2, $3, $4) RETURNING id, nome, email',
-      [nome, email, hashed, cpf]
+      'INSERT INTO users (nome, email, senha_hash, cpf, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, nome, email, role',
+      [nome, email, hashed, cpf, role]
     );
     const user = result.rows[0];
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(201).json({ success: true, token, user });
+    // se for motorista, opcionalmente crie registro na tabela buses
+    let busId: number | null = null;
+    try {
+      const busRes = await pool.query(
+        `SELECT id FROM buses WHERE driver_id = $1 LIMIT 1`,
+        [user.id]
+      );
+      if (busRes.rowCount === 0 && role === 'driver') {
+        // tenta inserir se tabela buses existir
+        const insertBus = await pool.query(
+          `INSERT INTO buses (driver_id, placa, ativo, created_at) VALUES ($1, $2, true, now()) RETURNING id`,
+          [user.id, placa ?? null]
+        );
+        if (insertBus.rowCount) busId = insertBus.rows[0].id;
+      } else if (busRes.rowCount) {
+        busId = busRes.rows[0].id;
+      }
+    } catch (err) {
+      // se tabela buses não existir ou falhar, continuar sem quebrar
+      console.warn('Aviso: não foi possível criar/ler registro em buses (opcional):', err);
+    }
+
+    const payload = { id: user.id, nome: user.nome, role: user.role, busId: busId ?? null, currentRouteId: null };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+
+    res.status(201).json({ success: true, token, user: payload });
   } catch (err) {
+    console.error('Erro register:', err);
     res.status(500).json({ success: false, message: 'Erro ao registrar usuário' });
   }
 };
@@ -55,25 +80,37 @@ export const login = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const userRes = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const userRes = await pool.query('SELECT id, nome, email, senha_hash, role FROM users WHERE email = $1', [email]);
     if (userRes.rowCount === 0) {
       return res.status(400).json({ success: false, message: 'Usuário não encontrado' });
     }
 
-    const user = userRes.rows[0];
-    const match = await bcrypt.compare(senha, user.senha_hash);
+    const userRow = userRes.rows[0];
+    const match = await bcrypt.compare(senha, userRow.senha_hash);
     if (!match) {
       return res.status(401).json({ success: false, message: 'Senha inválida' });
     }
 
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({
-      success: true,
-      token,
-      user: { id: user.id, nome: user.nome, email: user.email }
-    });
+    // buscar busId/currentRouteId se tabela buses
+    let busId: number | null = null;
+    let currentRouteId: number | null = null;
+    try {
+      const br = await pool.query('SELECT id, route_id FROM buses WHERE driver_id = $1 LIMIT 1', [userRow.id]);
+      if (br.rowCount) {
+        busId = br.rows[0].id;
+        currentRouteId = br.rows[0].route_id ?? null;
+      }
+    } catch (err) {
+      // ignora se tabela buses não existir
+    }
+
+    const payload = { id: userRow.id, nome: userRow.nome, role: userRow.role ?? 'user', busId, currentRouteId };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+
+    return res.json({ success: true, token, user: payload });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Erro ao autenticar' });
+    console.error('Erro login:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao autenticar' });
   }
 };
 

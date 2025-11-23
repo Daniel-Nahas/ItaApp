@@ -29,9 +29,25 @@ export const addRoute = async (req: Request, res: Response) => {
 // Rota banco de dados
 export const getBusPositions = async (_req: Request, res: Response) => {
   try {
-    const result = await pool.query('SELECT id, latitude, longitude FROM bus_positions');
-    res.json(result.rows);
+    // retorna última posição por veículo (bus_id) incluindo route_id e meta
+    const result = await pool.query(
+      `SELECT bus_id AS id, route_id, latitude, longitude, speed, heading, accuracy,
+              extract(epoch from updated_at)*1000 AS timestamp
+       FROM bus_positions`
+    );
+    const rows = result.rows.map((r: any) => ({
+      id: r.id,
+      route_id: r.route_id,
+      latitude: Number(r.latitude),
+      longitude: Number(r.longitude),
+      speed: r.speed,
+      heading: r.heading,
+      accuracy: r.accuracy,
+      timestamp: Number(r.timestamp),
+    }));
+    res.json(rows);
   } catch (err) {
+    console.error('Erro ao buscar posições dos ônibus', err);
     res.status(500).json({ message: 'Erro ao buscar posições dos ônibus' });
   }
 };

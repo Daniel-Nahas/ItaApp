@@ -18,6 +18,7 @@ import api from '../components/Api';
 import { useAuth } from './AuthContext';
 import * as Location from 'expo-location';
 import { StackActions } from '@react-navigation/native';
+import io, { Socket } from 'socket.io-client'; // Socket.IO-client
 
 type RouteItem = {
   id?: number;
@@ -28,20 +29,27 @@ type RouteItem = {
 
 export default function Rota({ navigation, route }: any) {
   const { styles } = useTheme();
-  const { visitante, userId } = useAuth();
+  const { visitante, userId, token } = useAuth();
   const params: any = route?.params || {};
 
   const selectedRouteIdParam = params?.routeId ?? null;
   const selectedRouteNameParam = params?.routeName ?? '';
 
+  // -----------------------
+  // Estado local
+  // -----------------------
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [busPositions, setBusPositions] = useState<{ id: number; latitude: number; longitude: number }[]>([]);
+  const [busPositions, setBusPositions] = useState<{ id: number; latitude: number; longitude: number; route_id?: number }[]>([]);
   const [routes, setRoutes] = useState<RouteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
 
+  // animação do logo enquanto carrega
   const busAnim = useRef(new Animated.Value(0)).current;
 
+  // -----------------------
+  // Animação de logo (carregando)
+  // -----------------------
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
@@ -53,9 +61,13 @@ export default function Rota({ navigation, route }: any) {
     return () => anim.stop();
   }, [busAnim]);
 
+  // -----------------------
+  // Obter localização do dispositivo (permissão)
+  // -----------------------
   useEffect(() => {
     const getLocation = async () => {
       if (visitante) {
+        // visitante: posição padrão
         setUserLocation({ latitude: -24.190, longitude: -46.780 });
         return;
       }
@@ -79,12 +91,23 @@ export default function Rota({ navigation, route }: any) {
     getLocation();
   }, [visitante]);
 
+  // -----------------------
+  // Buscar rotas e posições (usa /api/bus e /api/bus/positions)
+  // Atualiza a cada 10s - evita loops infinitos porque é um intervalo controlado
+  // -----------------------
   const fetchData = async () => {
     try {
       const [resRoutes, resBuses] = await Promise.all([
-        api.get('/bus').catch(() => ({ data: [] })),
-        api.get('/bus/positions').catch(() => ({ data: [] })),
+        api.get('/bus').catch(err => {
+          console.log('Erro rotas (fetchData):', err?.message || err);
+          return { data: [] };
+        }),
+        api.get('/bus/positions').catch(err => {
+          console.log('Erro posições (fetchData):', err?.message || err);
+          return { data: [] };
+        }),
       ]);
+
       setRoutes(resRoutes.data || []);
       setBusPositions(resBuses.data || []);
     } catch (err) {
@@ -97,35 +120,120 @@ export default function Rota({ navigation, route }: any) {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000);
+    const interval = setInterval(fetchData, 10000); // 10s
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // -----------------------
+  // Filtragem local das rotas (barra de busca)
+  // -----------------------
   const filteredRoutes = useMemo(() => {
     if (!query.trim()) return routes;
     const q = query.toLowerCase();
     return routes.filter(r => (r.nome || '').toLowerCase().includes(q));
   }, [routes, query]);
 
-  // registrar busca: enviar apenas routeId (backend deve extrair userId do token)
+  // -----------------------
+  // registrar busca: envia somente routeId (token no backend deve resolver user)
+  // -----------------------
   const registrarBusca = async (routeId: number) => {
     try {
-      await api.post('/users/route-search', { routeId });
-    } catch (err: any) {
-      console.error('Erro ao registrar busca de rota:', err?.response?.status, err?.response?.data || err?.message || err);
+      await api.post('/users/route-search', { routeId }).catch(() => {});
+    } catch (err) {
+      console.log('Erro ao registrar busca de rota:', err);
     }
   };
 
-  // -------------------------
-  // Hooks / estado para fake tracking (TOPO, ordem estável)
-  // -------------------------
+  // -----------------------
+  // Socket.IO — rastreamento em tempo real
+  // Explicação:
+  // 1) Criamos uma conexão client com o servidor Socket.IO.
+  // 2) Quando há uma rota selecionada, entramos na sala "route_<id>".
+  // 3) Ouvimos eventos do servidor com posições atualizadas e aplicamos em busPositions.
+  // 4) Limpamos a conexão ao sair da rota/desmontar.
+  // -----------------------
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    // Só conecta em rota específica e se não for visitante
+    if (!selectedRouteIdParam || visitante) return;
+
+    // Exemplo de URL do Socket.IO: ajuste para seu backend (mesma origem da API ou variável de ambiente)
+    const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+
+    // Conecta com token (se houver) via query; o backend já sabe extrair do handshake
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket'],
+      forceNew: true,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      query: token ? { token } : undefined,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      // entrar na sala da rota
+      socket.emit('join_room', Number(selectedRouteIdParam));
+      // opcional: solicitar última posição inicial
+      socket.emit('bus_request_latest', { routeId: Number(selectedRouteIdParam) });
+    });
+
+    // Evento esperado do servidor para atualização de posições
+    // - 'bus_position_update' para posição de um ônibus
+    // - ou 'bus_positions_snapshot' para lista completa
+    socket.on('bus_position_update', (payload: { id: number; latitude: number; longitude: number; route_id?: number }) => {
+      if (!payload || !payload.latitude || !payload.longitude) return;
+      setBusPositions(prev => {
+        // atualiza ou insere o ônibus por id
+        const idx = prev.findIndex(b => String(b.id) === String(payload.id));
+        const nextItem = { id: payload.id, latitude: Number(payload.latitude), longitude: Number(payload.longitude), route_id: payload.route_id };
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = nextItem;
+          return copy;
+        }
+        return [...prev, nextItem];
+      });
+    });
+
+    socket.on('bus_positions_snapshot', (list: { id: number; latitude: number; longitude: number; route_id?: number }[]) => {
+      if (!Array.isArray(list)) return;
+      setBusPositions(list.map(b => ({ id: b.id, latitude: Number(b.latitude), longitude: Number(b.longitude), route_id: b.route_id })));
+    });
+
+    socket.on('disconnect', () => {
+      // limpeza automática (o useEffect também faz cleanup abaixo)
+    });
+
+    // Cleanup: sair da sala e desconectar
+    return () => {
+      try {
+        socket.emit('leave_room', Number(selectedRouteIdParam));
+        socket.disconnect();
+      } catch {}
+      socketRef.current = null;
+    };
+  }, [selectedRouteIdParam, visitante, token]);
+
+  // -----------------------
+  // Fake tracking
+  // Objetivo: simular um ônibus andando pelos pontos da rota sem precisar do backend em tempo real.
+  // Como funciona:
+  // - Criamos um índice (fakeIndex) que percorre o array de coordenadas da rota (coords).
+  // - A cada STEP_MS, atualizamos fakePos para o próximo ponto.
+  // - Opcionalmente, animamos a câmera para seguir o marcador simulado.
+  // Observação:
+  // - ESTA LÓGICA ESTÁ DESATIVADA por padrão (comentada) porque agora usamos Socket.IO de verdade.
+  // - Para testar offline, descomente o bloco do useEffect e a renderização do Marker fake.
+  // -----------------------
   const mapRef = useRef<MapView | null>(null);
   const fakeIntervalRef = useRef<number | null>(null);
   const [fakeIndex, setFakeIndex] = useState(0);
   const [fakePos, setFakePos] = useState<{ latitude: number; longitude: number } | null>(null);
   const followMarkerRef = useRef(true);
 
-  // selectedRoute e coords calculados com useMemo (não condicionais)
   const selectedRoute = useMemo(() => {
     if (!selectedRouteIdParam) return null;
     return routes.find(r => Number(r.id) === Number(selectedRouteIdParam)) || null;
@@ -133,42 +241,49 @@ export default function Rota({ navigation, route }: any) {
 
   const coords = useMemo(() => {
     const pontos = (selectedRoute?.pontos as any) || [];
-    return Array.isArray(pontos) ? pontos.map((p: any) => ({ latitude: Number(p.lat), longitude: Number(p.lng) })) : [];
+    let parsed = pontos;
+    if (typeof pontos === 'string') {
+      try {
+        parsed = JSON.parse(pontos);
+      } catch {
+        parsed = [];
+      }
+    }
+    return Array.isArray(parsed) ? parsed.map((p: any) => ({ latitude: Number(p.lat), longitude: Number(p.lng) })) : [];
   }, [selectedRoute]);
 
-  // efeito top-level para fake tracking (inicia/limpa interval)
+  // Fake tracking effect (DESATIVADO — deixe comentado para referência)
+  /*
   useEffect(() => {
-    // limpa anterior
+    // 1) Limpa qualquer intervalo anterior
     if (fakeIntervalRef.current) {
       clearInterval(fakeIntervalRef.current);
       fakeIntervalRef.current = null;
     }
 
-    if (!coords || coords.length === 0) {
+    // 2) Se não houver pontos na rota, ou se for visitante, não iniciar
+    if (!coords || coords.length === 0 || visitante) {
       setFakePos(null);
       setFakeIndex(0);
       return;
     }
 
-    if (visitante) {
-      setFakePos(null);
-      setFakeIndex(0);
-      return;
-    }
-
-    // iniciar no primeiro ponto
+    // 3) Inicializa posição no primeiro ponto
     setFakePos(coords[0]);
     setFakeIndex(0);
 
-    const STEP_MS = 1000; // ajuste de velocidade
+    // 4) Define o intervalo de atualização da posição (ms)
+    const STEP_MS = 1000;
     let idx = 0;
 
+    // 5) Intervalo que avança o índice e atualiza posição do marcador
     fakeIntervalRef.current = (setInterval(() => {
       idx = (idx + 1) % coords.length;
       const next = coords[idx];
       setFakePos(next);
       setFakeIndex(idx);
 
+      // 6) Opcional: anima a câmera para seguir o marcador
       if (followMarkerRef.current && mapRef.current && next) {
         InteractionManager.runAfterInteractions(() => {
           try {
@@ -181,23 +296,22 @@ export default function Rota({ navigation, route }: any) {
               },
               { duration: 600 }
             );
-          } catch (e) {
-            // silencioso
-          }
+          } catch {}
         });
       }
     }, STEP_MS) as unknown) as number;
 
+    // 7) Cleanup do intervalo ao desmontar/alterar dependências
     return () => {
       if (fakeIntervalRef.current) {
         clearInterval(fakeIntervalRef.current);
         fakeIntervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(coords), visitante]);
+  */
 
-  // proteção: enquanto carrega ou sem localização válida
+  // Se ainda carregando / sem localização: mostrar animação
   if (loading || !userLocation) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }]}>
@@ -215,7 +329,7 @@ export default function Rota({ navigation, route }: any) {
     );
   }
 
-  // Branch: rota selecionada por param
+  // Branch: rota selecionada por param (mostra detalhe + socket em tempo real)
   if (selectedRouteIdParam) {
     if (!selectedRoute) {
       return (
@@ -249,6 +363,7 @@ export default function Rota({ navigation, route }: any) {
           }}
           showsUserLocation={!visitante}
         >
+          {/* === Marcadores dos ônibus (em tempo real via Socket.IO + fallback do backend REST) === */}
           {busPositions.map((bus, i) =>
             bus.latitude && bus.longitude ? (
               <Marker
@@ -260,14 +375,17 @@ export default function Rota({ navigation, route }: any) {
             ) : null
           )}
 
-          {coords.length >= 2 && <Polyline key={String(selectedRoute.id ?? 'route')} coordinates={coords} strokeColor={'green'} strokeWidth={4} />}
+          {/* === Polyline da rota selecionada (do banco /api/bus) === */}
+          {coords.length >= 2 && <Polyline key={String(selectedRoute.id ?? 'route')} coordinates={coords} strokeColor={'yellow'} strokeWidth={4} />}
 
-          {/* marcador fake que simula um ônibus em movimento */}
+          {/* === Marcador fake (DESATIVADO) — descomente para testar offline */}
+          {/*
           {fakePos && (
             <Marker key={`fake-${fakeIndex}`} coordinate={fakePos} title={`Ônibus simulado`} pinColor="orange">
               <Image source={require('../assets/onibus.png')} style={{ width: 36, height: 36, tintColor: 'orange' }} />
             </Marker>
           )}
+          */}
         </MapView>
 
         {/* Botão de Chat: mostra apenas para usuários autenticados */}
@@ -294,12 +412,11 @@ export default function Rota({ navigation, route }: any) {
             accessibilityRole="button"
             accessibilityLabel="Abrir chat da rota"
           >
-            {/*COLOCAR UM ICONE DE CHAT AQUI
-            <Image source={require('../assets/chat-icon.png')} style={{ width: 26, height: 26, tintColor: '#fff' }} /> */}
+            {/* Ícone de chat pode ser colocado aqui */}
           </TouchableOpacity>
         )}
 
-        {/* Barra inferior: para visitante volta ao Map; para autenticado mostra itens normais */}
+        {/* Barra inferior */}
         {visitante ? (
           <View style={styles.bottomNav}>
             <TouchableOpacity style={styles.navItem} onPress={() => navigation.replace('Map')}>
@@ -324,7 +441,9 @@ export default function Rota({ navigation, route }: any) {
     );
   }
 
+  // -----------------------
   // Caso padrão: mapa geral + busca + listagem
+  // -----------------------
   return (
     <View style={styles.container}>
       <View
@@ -399,10 +518,21 @@ export default function Rota({ navigation, route }: any) {
         )}
 
         {filteredRoutes.map((r, index) => {
-          const pontos = (r.pontos as any) || [];
-          const coords = Array.isArray(pontos) ? pontos.map((p: any) => ({ latitude: Number(p.lat), longitude: Number(p.lng) })) : [];
-          if (coords.length < 2) return null;
-          return <Polyline key={String(r.id ?? index)} coordinates={coords} strokeColor={index % 2 === 0 ? 'green' : 'red'} strokeWidth={4} />;
+          // r.pontos pode vir como string (JSON) ou array
+          const pontosRaw = (r.pontos as any) || [];
+          let pontosParsed: any[] = [];
+          if (typeof pontosRaw === 'string') {
+            try {
+              pontosParsed = JSON.parse(pontosRaw);
+            } catch {
+              pontosParsed = [];
+            }
+          } else if (Array.isArray(pontosRaw)) {
+            pontosParsed = pontosRaw;
+          }
+          const coordsLocal = pontosParsed.map((p: any) => ({ latitude: Number(p.lat), longitude: Number(p.lng) }));
+          if (coordsLocal.length < 2) return null;
+          return <Polyline key={String(r.id ?? index)} coordinates={coordsLocal} strokeColor={index % 2 === 0 ? 'green' : 'red'} strokeWidth={4} />;
         })}
       </MapView>
 

@@ -17,9 +17,7 @@ import io, { Socket } from 'socket.io-client';
 import api from '../components/Api';
 import { useRoute } from '@react-navigation/native';
 
-// (mantém o restante das funções auxiliar: normalizeClient, containsPalavroes, makeClientId, etc.)
-// ... (copie as funções LEET_MAP, normalizeClient, PalavroesLocal, containsPalavroes, makeClientId, Message interface)
-
+// Utilitários de normalização e filtro de palavrões (mantidos)
 const LEET_MAP: Record<string, string> = {
   '4': 'a', '@': 'a',
   '3': 'e',
@@ -68,11 +66,12 @@ interface Message {
   foto_url?: string | null;
   routeId?: number | null;
   createdAt?: string | Date;
+  driverFlag?: boolean;
 }
 
 export default function Chat({ navigation }: any) {
   const { styles } = useTheme();
-  const { token, userId } = useAuth();
+  const { token, userId, user } = useAuth(); // espera-se que useAuth exponha user com role, busId se for motorista
   const route = useRoute();
   const params: any = route.params || {};
   const routeIdParam: number | null = params.routeId ?? null;
@@ -85,21 +84,28 @@ export default function Chat({ navigation }: any) {
   const flatRef = useRef<FlatList>(null);
   const windowWidth = Dimensions.get('window').width;
 
+  // Detecta se o usuário autenticado é motorista
+  const isDriver = user?.role === 'driver' || (user && (user.busId || user.currentRouteId)) || false;
+
   useEffect(() => {
     const SOCKET_URL = api.defaults.baseURL?.replace('/api', '') || 'http://10.0.2.2:3000';
+    // conecta socket usando token (handshake)
     const s = io(SOCKET_URL, { query: { token } });
     socketRef.current = s;
 
+    // Consulta perfil para obter nome/foto; fallback anônimo
     api.get('/auth/profile').then(res => {
       if (res.data) setMe({ id: res.data.id, nome: res.data.nome, foto_url: res.data.foto_url });
     }).catch(() => setMe({ id: null, nome: 'Anônimo', foto_url: null }));
 
+    // Cleanup ao desmontar
     return () => {
       s.disconnect();
       socketRef.current = null;
     };
   }, [token]);
 
+  // Recebe mensagens recebidas via socket
   useEffect(() => {
     const s = socketRef.current;
     if (!s) return;
@@ -125,6 +131,7 @@ export default function Chat({ navigation }: any) {
     };
   }, [routeIdParam]);
 
+  // Carrega histórico via REST e entra na sala do socket
   useEffect(() => {
     if (!routeIdParam) {
       setMessages([]);
@@ -143,6 +150,7 @@ export default function Chat({ navigation }: any) {
             foto_url: m.foto_url ?? null,
             routeId: m.route_id ?? routeIdParam,
             createdAt: m.created_at ?? new Date(),
+            driverFlag: m.driver_flag ?? false,
           })));
         }
       } catch (err) {
@@ -183,10 +191,15 @@ export default function Chat({ navigation }: any) {
       foto_url: me.foto_url ?? null,
       routeId: routeIdParam,
       createdAt: new Date(),
+      driverFlag: isDriver ? true : undefined, // marca para o servidor se vier de motorista
     };
 
+    // adiciona localmente para resposta instantânea
     setMessages(prev => [...prev, payload]);
+
+    // Emite com evento convencional; servidor já persiste e reemite para a sala
     socketRef.current?.emit('send_message', payload);
+
     setInput('');
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60);
   };
@@ -206,6 +219,7 @@ export default function Chat({ navigation }: any) {
         <View style={[{ maxWidth: windowWidth * 0.72, padding: 10, borderRadius: 12 }, isMe ? { backgroundColor: '#2b8aef', borderBottomRightRadius: 2 } : { backgroundColor: '#eee', borderBottomLeftRadius: 2 }]}>
           {!isMe && <Text style={{ fontWeight: '700', marginBottom: 4 }}>{item.user ?? 'Anônimo'}</Text>}
           <Text style={{ color: isMe ? '#fff' : '#222', lineHeight: 20 }}>{item.text}</Text>
+          {item.driverFlag && <Text style={{ fontSize: 10, color: isMe ? '#dde9ff' : '#666', marginTop: 6 }}>Mensagem enviada como motorista</Text>}
           {item.createdAt && <Text style={{ color: isMe ? '#dde9ff' : '#666', fontSize: 10, marginTop: 6, alignSelf: 'flex-end' }}>{new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>}
         </View>
 
@@ -214,20 +228,39 @@ export default function Chat({ navigation }: any) {
     );
   };
 
+  // Função exclusiva do motorista para voltar ao painel dele
+  const voltarAoPainelMotorista = () => {
+    // Navega para a tela do motorista; nome do screen deve ser registrado como 'RastreadorMotorista'
+    navigation.replace('RastreadorMotorista');
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header com seta para voltar à Rota */}
+      {/* Header com volta: se motorista, mostra botão para voltar ao Painel; senão, função padrão */}
       <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10 }}>
         <TouchableOpacity onPress={() => {
+          if (isDriver) {
+            voltarAoPainelMotorista();
+            return;
+          }
           if (routeIdParam) {
             navigation.navigate('Rota', { routeId: routeIdParam, routeName: routeNameParam });
           } else {
             navigation.goBack();
           }
         }} style={{ padding: 8 }}>
-          {/*<Image source={require('../assets/arrow-left.png')} style={{ width: 22, height: 22, tintColor: '#333' }} />*/}
+          {/* ícone ou texto simples */}
+          <Text style={{ color: '#333' }}>{isDriver ? '‹ Voltar ao Painel' : '‹ Voltar'}</Text>
         </TouchableOpacity>
+
         <Text style={[styles.title, { marginLeft: 8 }]}>{routeNameParam ? `Chat - ${routeNameParam}` : 'Chat por Rota'}</Text>
+
+        {/* Se for motorista, atalho adicional para voltar ao painel no header (opcional) */}
+        {isDriver && (
+          <TouchableOpacity onPress={voltarAoPainelMotorista} style={{ marginLeft: 'auto', padding: 8 }}>
+            <Text style={{ color: '#2b8aef', fontWeight: '700' }}>Painel</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList

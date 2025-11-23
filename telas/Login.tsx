@@ -20,6 +20,7 @@ export default function Login({ navigation }: any) {
 
     try {
       const response = await api.post('/auth/login', { email, senha });
+      // espera-se { token, user: { id, ... } }
       login(response.data.token, response.data.user.id);
       navigation.replace('Map');
     } catch (err: any) {
@@ -59,6 +60,14 @@ export default function Login({ navigation }: any) {
 
       <TouchableOpacity style={styles.btnCad} onPress={() => navigation.navigate('Register')}>
         <Text style={styles.btnTxtCad}>Cadastrar</Text>
+      </TouchableOpacity>
+
+      {/* Botão para acessar a tela de login exclusiva do motorista */}
+      <TouchableOpacity
+        style={[styles.btn, { marginTop: 12, backgroundColor: '#4b7bec' }]}
+        onPress={() => navigation.navigate('LoginMotorista')}
+      >
+        <Text style={styles.btnTxt}>Área do Motorista</Text>
       </TouchableOpacity>
 
       <TouchableOpacity

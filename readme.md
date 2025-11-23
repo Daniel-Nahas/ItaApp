@@ -149,56 +149,80 @@ Clique com o botão direito em Tables → Query Tool
 Cole o script SQL abaixo:
 
 sql
--- Criar tipo ENUM para rotas
+-- 0) Tipo ENUM para tipo de rota
 CREATE TYPE tipo_rota AS ENUM ('ida', 'volta');
 
--- Usuários
+-- 1) Tabela users
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
-    senha_hash VARCHAR(255) NOT NULL,
-    cpf VARCHAR(20),
-    foto_url VARCHAR(255),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Feedback
-CREATE TABLE feedbacks (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    estrelas INT CHECK (estrelas >= 1 AND estrelas <= 5),
-    comentario TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Rotas de ônibus
-CREATE TABLE bus_routes (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    tipo tipo_rota NOT NULL,
-    pontos JSONB NOT NULL, -- array de coordenadas [{lat, lng}]
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Chat
-CREATE TABLE chat_messages (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    mensagem TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
-ALTER TABLE chat_messages
-ADD COLUMN route_id INT REFERENCES bus_routes(id);
-
-CREATE TABLE bus_positions (
   id SERIAL PRIMARY KEY,
-  latitude DOUBLE PRECISION NOT NULL,
-  longitude DOUBLE PRECISION NOT NULL,
+  nome VARCHAR(100) NOT NULL,
+  email VARCHAR(150) UNIQUE NOT NULL,
+  senha_hash VARCHAR(255) NOT NULL,
+  cpf VARCHAR(20),
+  foto_url VARCHAR(255),
+  role VARCHAR(32) DEFAULT 'user' NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 2) Tabela bus_routes (rotas de ônibus)
+CREATE TABLE bus_routes (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  tipo tipo_rota NOT NULL,
+  pontos JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 3) Tabela buses (opcional: veículos e vínculo com motorista)
+CREATE TABLE buses (
+  id BIGSERIAL PRIMARY KEY,
+  placa VARCHAR(32),
+  nome VARCHAR(100),
+  driver_id INT REFERENCES users(id) ON DELETE SET NULL,
+  ativo BOOLEAN DEFAULT TRUE,
+  route_id INT REFERENCES bus_routes(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 4) Tabela chat_messages (mensagens) com vínculo a rota e campos extras
+CREATE TABLE chat_messages (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  mensagem TEXT NOT NULL,
+  route_id INT REFERENCES bus_routes(id),
+  foto_url VARCHAR(255),
+  client_id VARCHAR(128),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 5) Tabela bus_positions
+CREATE TABLE bus_positions (
+  id SERIAL PRIMARY KEY,
+  bus_id BIGINT, -- pode referenciar buses.id se você quiser (fk opcional)
+  route_id INT REFERENCES bus_routes(id),
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  speed DOUBLE PRECISION,
+  heading DOUBLE PRECISION,
+  accuracy DOUBLE PRECISION,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 6) Tabela histórica de posições (append-only)
+CREATE TABLE bus_positions_history (
+  id BIGSERIAL PRIMARY KEY,
+  bus_id BIGINT,
+  route_id INT REFERENCES bus_routes(id),
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  speed DOUBLE PRECISION,
+  heading DOUBLE PRECISION,
+  accuracy DOUBLE PRECISION,
+  recorded_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 7) user_route_searches (histórico de buscas de rota)
 CREATE TABLE user_route_searches (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id),
@@ -206,15 +230,26 @@ CREATE TABLE user_route_searches (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 8) user_favorite_routes (rotas favoritas, único por user+route)
 CREATE TABLE user_favorite_routes (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id),
   route_id INT REFERENCES bus_routes(id),
+  created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE (user_id, route_id)
 );
 
--- Cria tabela para tokens de redefinição
-CREATE TABLE IF NOT EXISTS password_reset_tokens (
+-- 9) feedbacks
+CREATE TABLE feedbacks (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  estrelas INT CHECK (estrelas >= 1 AND estrelas <= 5),
+  comentario TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 10) password_reset_tokens
+CREATE TABLE password_reset_tokens (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id) ON DELETE CASCADE,
   token VARCHAR(255) NOT NULL,
@@ -223,8 +258,10 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Criar tabela para tokens de alteração de e-mail
-CREATE TABLE IF NOT EXISTS email_change_tokens (
+CREATE INDEX idx_password_reset_token ON password_reset_tokens(token);
+
+-- 11) email_change_tokens
+CREATE TABLE email_change_tokens (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id) ON DELETE CASCADE,
   new_email VARCHAR(255) NOT NULL,
@@ -234,13 +271,34 @@ CREATE TABLE IF NOT EXISTS email_change_tokens (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_email_change_token ON email_change_tokens(token);
+CREATE INDEX idx_email_change_token 
+ON email_change_tokens(token);
 
+-- 12) Índices de apoio (recomendados para performance)
+CREATE INDEX idx_chat_messages_route 
+ON chat_messages(route_id);
+CREATE INDEX idx_chat_messages_user 
+ON chat_messages(user_id);
 
--- Índice para buscar por token rapidamente
-CREATE INDEX IF NOT EXISTS idx_password_reset_token ON password_reset_tokens(token);
+CREATE INDEX idx_bus_positions_bus_id 
+ON bus_positions(bus_id);
+CREATE INDEX idx_bus_positions_route_id 
+ON bus_positions(route_id);
+CREATE INDEX idx_bus_positions_updated_at 
+ON bus_positions(updated_at);
 
-SELECT * FROM users;
+CREATE INDEX idx_bp_hist_bus 
+ON bus_positions_history(bus_id);
+CREATE INDEX idx_bp_hist_route_time 
+ON bus_positions_history(route_id, recorded_at DESC);
+
+CREATE INDEX idx_user_route_searches_user 
+ON user_route_searches(user_id);
+CREATE INDEX idx_user_route_searches_route 
+ON user_route_searches(route_id);
+
+CREATE INDEX idx_user_favorite_routes_user 
+ON user_favorite_routes(user_id);
 
 -- Rota 1
 INSERT INTO bus_routes (nome, tipo, pontos) VALUES
